@@ -1,6 +1,10 @@
 #version 430 core
 #define PI 3.141592
 
+#define MAX_DIR_LIGHTS 5
+#define MAX_POINT_LIGHTS 50
+#define MAX_SPOT_LIGHTS 50
+
 out vec4 outColor;
 
 in vec2 uv;
@@ -8,27 +12,27 @@ in vec3 outNormal;
 in vec3 fragPos;
 in mat3 TBN;
 
-struct DirLight {
+uniform struct DirLight {
     vec3 direction;
     vec3 color;
-};
+} dirLights[MAX_DIR_LIGHTS];
 
-struct PointLight{
+uniform struct PointLight{
     vec3 position;
     vec3 color;
     float attenuation;
-};
+} pointLights[MAX_POINT_LIGHTS];
 
-struct SpotLight{
+uniform struct SpotLight{
     vec3 position;
     vec3 color;
     float attenuation;
 
     float innerAngle;
     float outerAngle;
-};
+} spotLights[MAX_SPOT_LIGHTS];
 
-struct Material{
+uniform struct Material{
 	bool hasAlbedoMap;
 	bool hasRoughnessMap;
 	bool hasMetallicMap;
@@ -47,7 +51,7 @@ struct Material{
 	sampler2D normalMap;
 
 	sampler2D ambientOcclusionMap;
-};
+}mat;
 
 struct PixelMaterial{
 	vec3 albedo;
@@ -59,8 +63,6 @@ struct PixelMaterial{
 };
 
 uniform vec3 camPos;
-
-uniform Material mat;
 
 uniform samplerCube irradianceMap;
 uniform samplerCube prefilteredEnvironmentMap;
@@ -81,7 +83,6 @@ void main(){
     DirLight sun;
     sun.direction = vec3(.3, -.2, .45);
     sun.color = vec3(4);
-    
     
     PixelMaterial pbr = getMaterial();
 

@@ -12,9 +12,9 @@ std::list<ns::Shader*> ns::Shader::shaders;
 #endif
 
 //this constructor require filepath of shaders
-ns::Shader::Shader(const char* vertexPath, const char* fragmentPath, const char* geometryPath, bool reLoadable)
+ns::Shader::Shader(const char* vertexPath, const char* fragmentPath, const char* geometryPath, const std::vector<Define> &defines, bool reLoadable)
 {
-	loadShaderFrom(vertexPath, fragmentPath, geometryPath);
+	loadShaderFrom(vertexPath, fragmentPath, geometryPath, defines);
 
 #	ifdef RUNTIME_SHADER_RECOMPILATION
 	if (reLoadable) {
@@ -25,9 +25,9 @@ ns::Shader::Shader(const char* vertexPath, const char* fragmentPath, const char*
 #	endif // RUNTIME_SHADER_RECOMPILATION
 }
 
-ns::Shader::Shader(const char* computeShaderFilePath, bool reLoadable)
+ns::Shader::Shader(const char* computeShaderFilePath, const std::vector<Define>& defines, bool reLoadable)
 {
-	loadComputeShaderFrom(computeShaderFilePath);
+	loadComputeShaderFrom(computeShaderFilePath, defines);
 
 #	ifdef RUNTIME_SHADER_RECOMPILATION
 	if (reLoadable) {
@@ -76,11 +76,11 @@ void ns::Shader::update(const Window& window)
 		for (Shader* shader : shaders) {
 			if (shader->filepaths.size() > 1)
 			{
-				shader->loadShaderFrom(shader->filepaths[0], shader->filepaths[1], shader->filepaths[2]);
+				shader->loadShaderFrom(shader->filepaths[0], shader->filepaths[1], shader->filepaths[2], {});
 			}
 			else 
 			{
-				shader->loadComputeShaderFrom(shader->filepaths[0]);
+				shader->loadComputeShaderFrom(shader->filepaths[0], {});
 			}
 			std::cout << ".";
 		}
@@ -92,29 +92,32 @@ void ns::Shader::update(const Window& window)
 }
 
 //this function require filepath of shaders
-void ns::Shader::loadShaderFrom(const char* vertexPath, const char* fragmentPath, const char* geometryPath)
+void ns::Shader::loadShaderFrom(const char* vertexPath, const char* fragmentPath, const char* geometryPath, const std::vector<Define>& defines)
 {
 	std::string vertex;
 	if (!filepathToString(vertex, vertexPath)) {
 		std::cout << "error : can't find vertex shader's file at path :\n" << vertexPath << "\n";
 	}
+
+
 	std::string fragment;
 	if (!filepathToString(fragment, fragmentPath)) {
 		std::cout << "error : can't find fragment shader's file at path :\n" << fragmentPath << "\n";
 	}
+
 	std::string geometry;
-	const char* geo = nullptr;
-	if (geometryPath != nullptr) {
-		if (!filepathToString(geometry, geometryPath)) {
-			std::cout << "error : can't find geometry shader's file at path :\n" << geometryPath << "\n";
-		}
-		geo = geometry.c_str();
+	if (geometryPath != nullptr and strlen(geometryPath) > 1 and !filepathToString(geometry, geometryPath)) {
+		std::cout << "error : can't find geometry shader's file at path :\n" << geometryPath << "\n";
 	}
 
-	compileShader(vertex.c_str(), fragment.c_str(), geo);
+	setDefines(vertex, defines, ns::Shader::Stage::Vertex);
+	setDefines(fragment, defines, ns::Shader::Stage::Fragment);
+	setDefines(geometry, defines, ns::Shader::Stage::Geometry);
+
+	compileShader(vertex.c_str(), fragment.c_str(), geometry.c_str());
 }
 
-void ns::Shader::loadComputeShaderFrom(const char* computePath)
+void ns::Shader::loadComputeShaderFrom(const char* computePath, const std::vector<ns::Shader::Define>& defines)
 {
 	std::string computeText;
 	if (!filepathToString(computeText, computePath)) {
@@ -147,6 +150,31 @@ void ns::Shader::loadComputeShaderFrom(const char* computePath)
 	}
 }
 
+void ns::Shader::setDefines(std::string& shaderCode, const std::vector<ns::Shader::Define>& defines, ns::Shader::Stage stage)
+{
+	for (const auto& define : defines)
+	{
+		//check that the define is in the wanted stage
+		if (define.stage != stage) continue;
+
+		//search the #define line
+		std::string line = "#define " + define.name;
+		size_t existingDefine = shaderCode.find(line);
+
+		//if define already exist 
+		if (existingDefine != std::string::npos) {
+			const size_t size = shaderCode.find('\n', existingDefine + line.size()) - (existingDefine + line.size());
+			shaderCode.erase(existingDefine + line.size(), size);
+			shaderCode.insert(existingDefine + line.size(), " " + define.value);
+		}
+		//if it doesn't exist put it just after the #version XXX line
+		else {
+			size_t pos = shaderCode.find('\n', shaderCode.find("#version"));
+			shaderCode.insert(pos + 1, line + " " + define.value + '\n');
+		}
+	}
+}
+
 void ns::Shader::use() const
 {
 	glUseProgram(id);
@@ -169,7 +197,8 @@ void ns::Shader::compileShader(const char* vertex, const char* fragment, const c
 	}
 
 	uint32_t geometryShader;
-	if (geometry != nullptr) {
+	const bool useGeometryShader = geometry != nullptr and strlen(geometry) > 1;
+	if (useGeometryShader) {
 		//geometry shader 
 		geometryShader = glCreateShader(GL_GEOMETRY_SHADER);
 		glShaderSource(geometryShader, 1, &geometry, NULL);
@@ -181,8 +210,7 @@ void ns::Shader::compileShader(const char* vertex, const char* fragment, const c
 		glGetShaderiv(geometryShader, GL_COMPILE_STATUS, geometryCompilationSuccess);
 		if (!*geometryCompilationSuccess) {
 			glGetShaderInfoLog(geometryShader, 512, NULL, errorLog);
-			std::cerr << "ERROR in the fragment shader \n" << errorLog << '\n';
-			//assert(false);
+			std::cerr << "ERROR in the geometry shader \n" << errorLog << '\n';
 		}
 	}
 
@@ -196,14 +224,12 @@ void ns::Shader::compileShader(const char* vertex, const char* fragment, const c
 	if (!*fragmentCompilationSuccess) {
 		glGetShaderInfoLog(fragmentShader, 512, NULL, errorLog);
 		std::cerr << "ERROR in the fragment shader \n" << errorLog << '\n';
-		//assert(false);
 	}
 	//create a programm object
 	id = glCreateProgram();
 	glAttachShader(id, vertexShader);
 	glAttachShader(id, fragmentShader);
-	if (geometry != nullptr)
-		glAttachShader(id, geometryShader);
+	if (useGeometryShader) glAttachShader(id, geometryShader);
 	glLinkProgram(id);
 
 	//verify if link was a success
@@ -212,7 +238,6 @@ void ns::Shader::compileShader(const char* vertex, const char* fragment, const c
 	if (!linkSuccess) {
 		glGetProgramInfoLog(id, 512, NULL, errorLog);
 		std::cerr << "ERROR while linking shaders \n" << errorLog << '\n';
-		//assert(false);
 	}
 	use();
 	glDeleteShader(vertexShader);

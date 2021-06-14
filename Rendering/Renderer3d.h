@@ -7,7 +7,6 @@
 #include "Model.h"
 #include "Object3d.h"
 #include "Scene.h"
-#define NS_PATH "resources/ns/"
 
 //stl
 #include <memory>

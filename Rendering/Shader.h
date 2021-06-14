@@ -18,6 +18,18 @@ namespace ns {
 	class Shader
 	{
 	public:
+
+		enum class Stage
+		{
+			Vertex,
+			Fragment,
+			Geometry
+		};
+		struct Define {
+			std::string name;
+			std::string value;
+			Stage stage;
+		};
 		/**
 		 * @brief read all the files in inputs and compile them as glsl shaders
 		 * errors of compiling are logs in the shell
@@ -25,12 +37,12 @@ namespace ns {
 		 * \param fragmentPath
 		 * \param geometryPath
 		 */
-		Shader(const char* vertexPath, const char* fragmentPath, const char* geometryPath = nullptr, bool reLoadable = false);
+		Shader(const char* vertexPath, const char* fragmentPath, const char* geometryPath = nullptr, const std::vector<Define>& defines = {}, bool reLoadable = false);
 		/**
 		 * @brief compile a compute shader
 		 * \param computeShaderFilePath
 		 */
-		Shader(const char* computeShaderFilePath, bool reLoadable = false);
+		Shader(const char* computeShaderFilePath, const std::vector<Define>& defines = {}, bool reLoadable = false);
 		~Shader();
 		
 		/**
@@ -59,9 +71,11 @@ namespace ns {
 		bool reloadable;
 #		endif
 		
-		void loadShaderFrom(const char* vertexPath, const char* fragmentPath, const char* geometryPath = nullptr);
-		void loadComputeShaderFrom(const char* computePath);
-		void compileShader(const char* vertexText, const char* fragmentText, const char* geometryText = nullptr);
+		void loadShaderFrom(const char* vertexPath, const char* fragmentPath, const char* geometryPath, const std::vector<Define>& defines);
+		void loadComputeShaderFrom(const char* computePath, const std::vector<Define>& defines);
+		void setDefines(std::string& shaderCode, const std::vector<ns::Shader::Define>& defines, ns::Shader::Stage stage);
+
+		void compileShader(const char* vertexText, const char* fragmentText, const char* geometryText);
 		static bool filepathToString(std::string& string, const char* filepath);
 	};
 };
