@@ -1,8 +1,11 @@
 #pragma once
 
 #include "Shader.h"
+#include "Object3d.h"
 
 #include <glm/glm.hpp>
+
+#include <optional>
 
 #define NS_WHITE glm::vec3(1)
 #define NS_BLACK glm::vec3(0)
@@ -49,6 +52,8 @@ namespace ns {
 
 		void setPosition(const glm::vec3& position);
 		void setAttenuation(float attenuationValue);
+		void setParent(const Object3d* parent);
+		void removeParent();
 
 		glm::vec3 position();
 		float attenuationValue();
@@ -61,6 +66,7 @@ namespace ns {
 	protected:
 		glm::vec3 position_;
 		float attenuation_;
+		std::optional<const Object3d*> parent_;
 
 	private:
 		static uint32_t number_;
@@ -69,7 +75,11 @@ namespace ns {
 	class SpotLight : public PointLight
 	{
 	public:
-		SpotLight(const glm::vec3& position = NS_BLACK, float attenuation = .2f, const glm::vec3& color = NS_WHITE, float innerAngle = 16.0f, float outerAngle = 19.0f);
+		SpotLight(const glm::vec3& position = NS_BLACK, float attenuation = .2f, const glm::vec3& color = NS_WHITE,
+			const glm::vec3& direction = {1, 0, 0}, float innerAngle = 16.0f, float outerAngle = 19.0f);
+
+		void setAngle(float innerAngle, float outerAngle);
+		void setDirection(const glm::vec3& direction);
 
 		virtual void send(const Shader& shader) const override;
 		
@@ -77,10 +87,16 @@ namespace ns {
 		static void clear();
 
 	protected:
-		float innerAngle_;
-		float outerAngle_;
+		glm::vec3 direction_;
+		float innerCutOff_;
+		float outerCutOff_;
 
 	private:
 		static uint32_t number_;
 	};
+
+	/**
+	 * @brief clear all the lights (they are not suppressed but it allow to overwrite them by using send())
+	 */
+	void clearLights();
 }

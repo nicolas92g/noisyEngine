@@ -29,8 +29,11 @@ ns::Renderer3d::Renderer3d(Window& window, Camera& camera, Scene& scene)
 
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_MULTISAMPLE);
+	//transparency
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	//avoid visible cube edges of the cubemaps 
+	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
 	glClearColor(.7f, 1, 1, 1.0);
 }
@@ -43,6 +46,9 @@ ns::Renderer3d::~Renderer3d()
 void ns::Renderer3d::draw()
 {
 	cam_.calculateMatrix(win_);
+
+	scene_.sendLights(*pbr_);
+
 	setDynamicUniforms();
 
 	scene_.draw(*pbr_);
@@ -133,6 +139,10 @@ void ns::Renderer3d::setDynamicUniforms() const
 	pbr_->set("projView", cam_.getProjectionView());
 	pbr_->set("model", glm::scale(glm::vec3(1)));
 	pbr_->set("camPos", cam_.getPosition());
+
+	pbr_->set<int>("dirLightNumber", DirectionalLight::number());
+	pbr_->set<int>("pointLightNumber", PointLight::number());
+	pbr_->set<int>("spotLightNumber", SpotLight::number());
 }
 
 void ns::Renderer3d::loadEnvironmentMap(const char* path, int res)

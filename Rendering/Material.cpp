@@ -9,7 +9,7 @@ bool ns::Material::describeMaterialsWhenCreate = false;
 ns::Material::Material(aiMaterial* mtl, const std::string& texturesDirectory,  aiTexture** const embeddedTextures, int numberOfEmbeddedTextures)
 	:
 	albedo_(.5f),
-	roughness_(.4f),
+	roughness_(.8f),
 	metallic_(.1f),
 	name_(mtl->GetName().C_Str())
 {

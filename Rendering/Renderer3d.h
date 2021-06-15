@@ -23,7 +23,6 @@ namespace ns {
 		void draw();
 		void updateStationaries();
 
-
 		void setCamera(Camera& camera);
 		void setScene(Scene& scene);
 

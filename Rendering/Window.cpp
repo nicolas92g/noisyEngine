@@ -58,6 +58,10 @@ ns::Window::Window(uint32_t width, uint32_t height, const char* title, int sampl
     std::cout << glGetString(GL_VENDOR) << " " << glGetString(GL_RENDERER) << std::endl 
         << "OpenGL version : " << glGetString(GL_VERSION) << "\n\n\n";
 
+    //int width_, height_;
+    //glfwGetMonitorPhysicalSize(glfwGetPrimaryMonitor(), &width_, &height_);
+    //std::cout << "screen size : " << width_ << " / " << height_ << std::endl;
+
 #	endif //NDEBUG
 }
 
