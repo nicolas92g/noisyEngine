@@ -19,79 +19,75 @@ namespace ns {
 		void setColor(const glm::vec3& color);
 		glm::vec3 color() const;
 
-		virtual void send(const Shader&) const = 0;
+		virtual void send(const Shader&) = 0;
 
 	protected:
 		glm::vec3 color_;
 	};
 
-	class DirectionalLight : public LightBase_
+	class attenuatedLightBase_ : public LightBase_
+	{
+	public:
+		attenuatedLightBase_(const glm::vec3& color, float attenuation);
+
+		void setAttenuation(float attenuationValue);
+		float attenuationValue();
+
+	protected:
+		float attenuation_;
+	};
+
+	class DirectionalLight : public LightBase_, public DirectionalObject3d
 	{
 	public:
 		DirectionalLight(const glm::vec3& direction = {.25f, -.25f, .5f}, const glm::vec3& color = NS_WHITE);
 
-		void setDirection(const glm::vec3& direction);
-		glm::vec3 direction() const;
-
-		virtual void send(const Shader& shader) const override;
+		virtual void send(const Shader& shader) override;
 
 		static uint32_t number();
 		static void clear();
 
-	protected:
-		glm::vec3 direction_;
-
 	private:
 		static uint32_t number_;
+
+		using DirectionalObject3d::position_;
+		using DirectionalObject3d::position;
+		using DirectionalObject3d::setPosition;
 	};
 
-	class PointLight : public LightBase_
+	class PointLight : public attenuatedLightBase_, public Object3d
 	{
 	public:
 		PointLight(const glm::vec3& position = NS_BLACK, float attenuation = .2f, const glm::vec3& color = NS_WHITE);
 
-		void setPosition(const glm::vec3& position);
-		void setAttenuation(float attenuationValue);
-		void setParent(const Object3d* parent);
-		void removeParent();
-
-		glm::vec3 position();
-		float attenuationValue();
-
-		virtual void send(const Shader& shader) const override;
+		virtual void send(const Shader& shader) override;
 
 		static uint32_t number();
 		static void clear();
-
-	protected:
-		glm::vec3 position_;
-		float attenuation_;
-		std::optional<const Object3d*> parent_;
 
 	private:
 		static uint32_t number_;
 	};
 
-	class SpotLight : public PointLight
+	class SpotLight : public attenuatedLightBase_, public DirectionalObject3d
 	{
 	public:
 		SpotLight(const glm::vec3& position = NS_BLACK, float attenuation = .2f, const glm::vec3& color = NS_WHITE,
 			const glm::vec3& direction = {1, 0, 0}, float innerAngle = 16.0f, float outerAngle = 19.0f);
 
 		void setAngle(float innerAngle, float outerAngle);
-		void setDirection(const glm::vec3& direction);
 
-		virtual void send(const Shader& shader) const override;
+		virtual void send(const Shader& shader) override;
 		
 		static uint32_t number();
 		static void clear();
 
 	protected:
-		glm::vec3 direction_;
 		float innerCutOff_;
 		float outerCutOff_;
 
 	private:
+		using Object3d::position_;
 		static uint32_t number_;
 	};
 

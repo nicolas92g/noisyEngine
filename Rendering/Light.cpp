@@ -21,34 +21,42 @@ glm::vec3 ns::LightBase_::color() const
 	return color_;
 }
 
+ns::attenuatedLightBase_::attenuatedLightBase_(const glm::vec3& color, float attenuation)
+	:
+	LightBase_(color)
+{
+	setAttenuation(attenuation);
+}
+
+void ns::attenuatedLightBase_::setAttenuation(float attenuationValue)
+{
+	attenuation_ = std::max(attenuationValue, .0f);
+}
+
+float ns::attenuatedLightBase_::attenuationValue()
+{
+	return attenuation_;
+}
+
 //--------------------------------
 //	    directional light
 //--------------------------------
 
 ns::DirectionalLight::DirectionalLight(const glm::vec3& direction, const glm::vec3& color)
 	: 
-	LightBase_(color)
+	LightBase_(color),
+	DirectionalObject3d(glm::vec3(0), direction)
 {
 	setDirection(direction);
 }
 
-void ns::DirectionalLight::setDirection(const glm::vec3& direction)
-{
-	direction_ = glm::normalize(direction);
-}
-
-glm::vec3 ns::DirectionalLight::direction() const
-{
-	return direction_;
-}
-
-void ns::DirectionalLight::send(const Shader& shader) const
+void ns::DirectionalLight::send(const Shader& shader)
 {
 	char name[18], buffer[40];
 	sprintf_s(name, "dirLights[%d]", number_);
 
 	sprintf_s(buffer, "%s.direction", name);
- 	shader.set(buffer, direction_);
+ 	shader.set(buffer, glm::normalize(-direction()));
 
 	sprintf_s(buffer, "%s.color", name);
 	shader.set(buffer, color_);
@@ -72,49 +80,17 @@ void ns::DirectionalLight::clear()
 
 ns::PointLight::PointLight(const glm::vec3& position, float attenuation, const glm::vec3& color)
 	:
-	LightBase_(color),
-	position_(position)
-{
-	setAttenuation(attenuation);
-}
+	attenuatedLightBase_(color, attenuation),
+	Object3d(position)
+{}
 
-void ns::PointLight::setPosition(const glm::vec3& position)
-{
-	position_ = position;
-}
-
-void ns::PointLight::setAttenuation(float attenuationValue)
-{
-	attenuation_ = std::max(attenuationValue, .0f);
-}
-
-void ns::PointLight::setParent(const Object3d* parent)
-{
-	parent_ = parent;
-}
-
-void ns::PointLight::removeParent()
-{
-	parent_.reset();
-}
-
-glm::vec3 ns::PointLight::position()
-{
-	return position_;
-}
-
-float ns::PointLight::attenuationValue()
-{
-	return attenuation_;
-}
-
-void ns::PointLight::send(const Shader& shader) const
+void ns::PointLight::send(const Shader& shader)
 {
 	char name[20], buffer[42];
 	sprintf_s(name, "pointLights[%d]", number_);
 
 	sprintf_s(buffer, "%s.position", name);
-	shader.set(buffer, position_);
+	shader.set(buffer, WorldPosition());
 
 	sprintf_s(buffer, "%s.color", name);
 	shader.set(buffer, color_);
@@ -141,7 +117,8 @@ void ns::PointLight::clear()
 
 ns::SpotLight::SpotLight(const glm::vec3& position, float attenuation, const glm::vec3& color, const glm::vec3& direction, float innerAngle, float outerAngle)
 	:
-	PointLight(position, attenuation, color)
+	attenuatedLightBase_(color, attenuation),
+	DirectionalObject3d(position, direction)
 {
 	setAngle(innerAngle, outerAngle);
 	setDirection(direction);
@@ -153,18 +130,13 @@ void ns::SpotLight::setAngle(float innerAngle, float outerAngle)
 	outerCutOff_ = glm::cos(glm::radians(outerAngle));
 }
 
-void ns::SpotLight::setDirection(const glm::vec3& direction)
-{
-	direction_ = glm::normalize(-direction);
-}
-
-void ns::SpotLight::send(const Shader& shader) const
+void ns::SpotLight::send(const Shader& shader)
 {
 	char name[20], buffer[42];
 	sprintf_s(name, "spotLights[%d]", number_);
 
 	sprintf_s(buffer, "%s.position", name);
-	shader.set(buffer, position_);
+	shader.set(buffer, WorldPosition());
 
 	sprintf_s(buffer, "%s.color", name);
 	shader.set(buffer, color_);
@@ -173,7 +145,7 @@ void ns::SpotLight::send(const Shader& shader) const
 	shader.set(buffer, attenuation_);
 
 	sprintf_s(buffer, "%s.direction", name);
-	shader.set(buffer, direction_);
+	shader.set(buffer, glm::normalize(-direction()));
 
 	sprintf_s(buffer, "%s.innerCutOff", name);
 	shader.set(buffer, innerCutOff_);

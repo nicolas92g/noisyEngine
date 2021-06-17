@@ -6,6 +6,15 @@
 std::vector<std::unique_ptr<ns::Texture>> ns::Material::textures;
 bool ns::Material::describeMaterialsWhenCreate = false;
 
+ns::Material::Material()
+	:
+	albedo_(.5f),
+	roughness_(.8f),
+	metallic_(.1f),
+	name_("unnamed")
+{
+}
+
 ns::Material::Material(aiMaterial* mtl, const std::string& texturesDirectory,  aiTexture** const embeddedTextures, int numberOfEmbeddedTextures)
 	:
 	albedo_(.5f),

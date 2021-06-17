@@ -1,15 +1,16 @@
 #include "Camera.h"
 using namespace glm;
 
-ns::Camera::Camera(const vec3& pos, float pitch_, float yaw_, float fov_)
+ns::Camera::Camera(const vec3& pos, float pitch, float yaw, float fov)
+	:
+	DirectionalObject3d(pos, glm::vec3(1, 0, 0))
 {
-	position = pos;
-	pitch = pitch_;
-	yaw = yaw_;
-	fov = fov_;
-	zNear = 0.1f;
-	zFar = 100.0f;
-	upDirection =  vec3(0,1,0);
+	pitch_ = pitch;
+	yaw_ = yaw;
+	fov_ = fov;
+	zNear_ = 0.1f;
+	zFar_ = 100.0f;
+	upDirection_ =  vec3(0,1,0);
 
 	//just to initalize vars
 	updateLookWithYawAndPitch();
@@ -30,15 +31,15 @@ void ns::Camera::calculateMatrix(float width, float height)
 #	endif //NDEBUG
 
 	//put all vars into 4x4 matrix transformation
-	view = lookAt(position, position + look, upDirection);
-	projection = perspective(fov, width / height,zNear, zFar);
+	view_ = lookAt(position_, position_ + direction_, upDirection_);
+	projection_ = perspective(fov_, width / height,zNear_, zFar_);
 }
 
 void ns::Camera::updateLookWithYawAndPitch()
 {
-	look.x = cos(yaw) * cos(pitch);
-	look.y = sin(pitch);
-	look.z = sin(yaw) * cos(pitch);
+	direction_.x = cos(yaw_) * cos(pitch_);
+	direction_.y = sin(pitch_);
+	direction_.z = sin(yaw_) * cos(pitch_);
 }
 
 void ns::Camera::classicMouseControls(Window& win, double mouseSensivity)
@@ -57,8 +58,8 @@ void ns::Camera::classicMouseControls(Window& win, double mouseSensivity)
 	if (!disableMouse) {
 		glm::vec<2, double> cursorPos = win.getCursorPos();
 
-		this->setYaw((float)yaw - float(mouseSensivity * float(win.width() / 2 - cursorPos.x)));
-		this->setPitch((float)pitch + float(mouseSensivity * float(win.height() / 2 - cursorPos.y)));
+		this->setYaw((float)yaw_ - float(mouseSensivity * float(win.width() / 2 - cursorPos.x)));
+		this->setPitch((float)pitch_ + float(mouseSensivity * float(win.height() / 2 - cursorPos.y)));
 
 		win.setCursorPos((double)win.width() * .5, (double)win.height() * .5);
 		win.hideCursor();
@@ -71,168 +72,148 @@ void ns::Camera::classicMouseControls(Window& win, double mouseSensivity)
 }
 void ns::Camera::classicKeyboardControls(Window& win, float speed)
 {
-	glm::vec3 lookWithoutY = look;
+	glm::vec3 lookWithoutY = direction_;
 	lookWithoutY.y = 0;
 
 	if (win.key(GLFW_KEY_W)) {
-		position += (float)win.deltaTime() * glm::normalize(lookWithoutY) * speed;
+		position_ += (float)win.deltaTime() * glm::normalize(lookWithoutY) * speed;
 	}
 	if (win.key(GLFW_KEY_S)) {
-		position -= (float)win.deltaTime() * glm::normalize(lookWithoutY) * speed;
+		position_ -= (float)win.deltaTime() * glm::normalize(lookWithoutY) * speed;
 	}
 	const glm::vec3 up = glm::vec3(0, 1, 0);
 	//lateral vector
-	glm::vec3 right = glm::normalize(glm::cross(up, look));
+	glm::vec3 right = glm::normalize(glm::cross(up, direction_));
 
 	if (win.key(GLFW_KEY_A)) {
-		position += (float)win.deltaTime() * glm::normalize(right) * speed;
+		position_ += (float)win.deltaTime() * glm::normalize(right) * speed;
 	}
 	if (win.key(GLFW_KEY_D)) {
-		position -= (float)win.deltaTime() * glm::normalize(right) * speed;
+		position_ -= (float)win.deltaTime() * glm::normalize(right) * speed;
 	}
 	if (win.key(GLFW_KEY_SPACE)) {
-		position.y += (float)win.deltaTime() * speed;
+		position_.y += (float)win.deltaTime() * speed;
 	}
 	if (win.key(GLFW_KEY_LEFT_CONTROL)) {
-		position.y -= (float)win.deltaTime() * speed;
+		position_.y -= (float)win.deltaTime() * speed;
 	}
 }
 
 bool ns::Camera::isVertexInTheFieldOfView(const glm::vec3& vertex, float offset)
 {
-	vec4 co = projection * view * vec4(vertex, 1);
+	vec4 co = projection_ * view_ * vec4(vertex, 1);
 	vec2 screen = vec2(co.x / co.z, co.y / co.z);
 	if (co.z < -0.1f)
 		return false;
- 	return ((screen.x > (-1 - offset) and screen.x < (1 + offset)) and (screen.y > (-1 - offset) and screen.y < (1 + offset)));	
+ 	return ((screen.x > (-1 - offset) and screen.x < (1 + offset)) and (screen.y > (-1 - offset) and screen.y < (1 + offset)));
 }
 
-glm::vec3 ns::Camera::getRightDirection() const
+glm::vec3 ns::Camera::rightDirection() const
 {
-	return glm::vec3(glm::normalize(-glm::cross(vec3(0.0f,1.0f,0.0f), look)));
+	return glm::vec3(glm::normalize(-glm::cross(vec3(0.0f,1.0f,0.0f), direction_)));
 }
 
-glm::vec3 ns::Camera::getPosition() const
+glm::vec3 ns::Camera::upDirection() const
 {
-	return position;
+	return upDirection_;
 }
 
-glm::vec3 ns::Camera::getLook() const
+float ns::Camera::pitch() const
 {
-	return glm::normalize(look);
+	return pitch_;
 }
 
-glm::vec3 ns::Camera::getUpDirection() const
+float ns::Camera::yaw() const
 {
-	return upDirection;
+	return yaw_;
 }
 
-float ns::Camera::getPitch() const
+glm::mat4 ns::Camera::projection() const
 {
-	return pitch;
+	return projection_;
 }
 
-float ns::Camera::getYaw() const
+glm::mat4 ns::Camera::view() const
 {
-	return yaw;
+	return view_;
 }
 
-glm::mat4 ns::Camera::getProjection() const
+glm::mat4 ns::Camera::projectionView() const
 {
-	return projection;
+	return projection_ * view_;
 }
 
-glm::mat4 ns::Camera::getView() const
+float ns::Camera::fov() const
 {
-	return view;
+	return fov_;
 }
 
-glm::mat4 ns::Camera::getProjectionView() const
+float ns::Camera::zNear() const
 {
-	return projection * view;
+	return zNear_;
 }
 
-float ns::Camera::getFov() const
+float ns::Camera::zFar() const
 {
-	return fov;
-}
-
-float ns::Camera::getZNear() const
-{
-	return zNear;
-}
-
-float ns::Camera::getZFar() const
-{
-	return zFar;
-}
-
-void ns::Camera::setPosition(const glm::vec3& position_)
-{
-	position = position_;
-}
-
-void ns::Camera::setLook(const glm::vec3& look_)
-{
-	look = look_;
+	return zFar_;
 }
 
 void ns::Camera::setUpDirection(const glm::vec3& up_)
 {
-	upDirection = glm::normalize(up_);
+	upDirection_ = glm::normalize(up_);
 }
 
-void ns::Camera::setPitch(float pitch_)
+void ns::Camera::setPitch(float pitch)
 {
-	if (pitch_ > PI/2.0f) {
-		pitch = PI/ 2.0f;
+	if (pitch > PI/2.0f) {
+		pitch_ = PI/ 2.0f;
 	}
-	else if (pitch_ < -PI / 2.0f) {
-		pitch = -PI / 2.0f;
-	}
-	else {
-		pitch = pitch_;
-	}
-}
-
-void ns::Camera::setYaw(float yaw_)
-{
-	yaw = yaw_;
-}
-
-void ns::Camera::setProjection(const glm::mat4& projection_)
-{
-	projection = projection_;
-}
-
-void ns::Camera::setView(const glm::mat4& view_)
-{
-	view = view_;
-}
-
-void ns::Camera::setFov(float fov_)
-{
-	if (fov_ < 0.0f) {
-		fov = 0;
-	}
-	else if (fov_ > 180.0f) {
-		fov = 180.0f;
+	else if (pitch < -PI / 2.0f) {
+		pitch_ = -PI / 2.0f;
 	}
 	else {
-		fov = fov_;
+		pitch_ = pitch;
 	}
 }
 
-void ns::Camera::setZNear(float zNear_)
+void ns::Camera::setYaw(float yaw)
 {
-	if (zNear_ >= 0.0f) {
-		zNear = zNear_;
+	yaw_ = yaw;
+}
+
+void ns::Camera::setProjection(const glm::mat4& projection)
+{
+	projection_ = projection;
+}
+
+void ns::Camera::setView(const glm::mat4& view)
+{
+	view_ = view;
+}
+
+void ns::Camera::setFov(float fov)
+{
+	if (fov < 0.0f) {
+		fov_ = 0;
+	}
+	else if (fov > 180.0f) {
+		fov_ = 180.0f;
+	}
+	else {
+		fov_ = fov;
 	}
 }
 
-void ns::Camera::setZFar(float zFar_)
+void ns::Camera::setZNear(float zNear)
 {
-	if (zFar_ >= 0.0f) {
-		zFar = zFar_;
+	if (zNear > 0.0f) {
+		zNear_ = zNear;
+	}
+}
+
+void ns::Camera::setZFar(float zFar)
+{
+	if (zFar > 0.0f) {
+		zFar_ = zFar;
 	}
 }

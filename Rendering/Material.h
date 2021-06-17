@@ -18,6 +18,7 @@ namespace ns {
 	class Material
 	{
 	public:
+		Material();
 		Material(aiMaterial* mtl, const std::string& texturesDirectory, aiTexture** const embeddedTextures, int numberOfEmbeddedTextures);
 
 		void bind(const ns::Shader& shader) const;

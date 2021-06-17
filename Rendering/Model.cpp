@@ -11,6 +11,9 @@
 //glm
 #include <glm/glm.hpp>
 
+//ns
+#include <Utils/utils.h>
+
 ns::Model::Model(const std::string& modelFilePath)
 {
 	Assimp::Importer importer;
@@ -24,7 +27,7 @@ ns::Model::Model(const std::string& modelFilePath)
 	);
 
 	if (!scene_ || scene_->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene_->mRootNode) {
-		std::cerr << "error while loading the file : " << modelFilePath << " with assimp\n" 
+		std::cerr << "error while loading the file : " << modelFilePath << " with assimp\n"
 			<< importer.GetErrorString() << std::endl;
 		return;
 	}
@@ -117,6 +120,33 @@ void ns::Model::createMeshFromNode(aiMesh* mesh)
 	meshes_.push_back(std::make_shared<ns::Mesh>(vertices, indices, *materials_[materials_.size() - 1].get(), info));
 }
 
+void ns::Model::getLights()
+{
+	for (size_t i = 0; i < scene_->mNumLights; i++)
+	{
+		switch (scene_->mLights[i]->mType) {
+
+		case aiLightSourceType::aiLightSource_DIRECTIONAL:
+			lights_.push_back(std::make_shared<ns::DirectionalLight>(
+				to_vec3(scene_->mLights[i]->mDirection), to_vec3(scene_->mLights[i]->mColorDiffuse)));
+			break;
+		case aiLightSourceType::aiLightSource_POINT:
+			lights_.push_back(std::make_shared<ns::PointLight>(
+				to_vec3(scene_->mLights[i]->mPosition), scene_->mLights[i]->mAttenuationLinear, to_vec3(scene_->mLights[i]->mColorDiffuse)));
+			break;
+		case aiLightSourceType::aiLightSource_SPOT:
+			lights_.push_back(std::make_shared<ns::SpotLight>(
+				to_vec3(scene_->mLights[i]->mPosition), scene_->mLights[i]->mAttenuationLinear, to_vec3(scene_->mLights[i]->mColorDiffuse),
+				to_vec3(scene_->mLights[i]->mDirection), 
+				glm::degrees(scene_->mLights[i]->mAngleInnerCone), glm::degrees(scene_->mLights[i]->mAngleOuterCone)));
+			break;
+
+		default:
+			break;
+		}
+	}	
+}
+
 GLuint ns::Model::pickIndexType(size_t numberOfPositions) const
 {
 	if (numberOfPositions <= std::numeric_limits<unsigned char>::max()) {
@@ -136,6 +166,11 @@ void ns::Model::describe() const
 		"\n num meshes = " << meshes_.size() << "\n";
 	for (const auto& mesh : meshes_)
 		std::cout;
+}
+
+std::vector<std::shared_ptr<ns::LightBase_>> ns::Model::getLights() const
+{
+	return lights_;
 }
 
 ns::Material* ns::Model::getMaterial(const std::string& materialName)

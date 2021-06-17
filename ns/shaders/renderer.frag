@@ -201,7 +201,7 @@ PixelMaterial getMaterial(){
 //----------------------------
 
 vec3 CalcDirLight(DirLight light, vec3 F0, vec3 viewDir, vec4 lightFragmentPosition, PixelMaterial pbr){
-    vec3 LightDir = normalize(-light.direction);
+    vec3 LightDir = light.direction;
     // calculate per-light radiance
     vec3 H = normalize(viewDir + LightDir);
     vec3 radiance = light.color;
@@ -209,7 +209,7 @@ vec3 CalcDirLight(DirLight light, vec3 F0, vec3 viewDir, vec4 lightFragmentPosit
     // cook-torrance brdf
     float NDF = DistributionGGX(pbr.normal, H, pbr.roughness);   
     float G   = GeometrySmith(pbr.normal, viewDir, LightDir, pbr.roughness);      
-    vec3 F    = fresnelSchlick(max(dot(H, viewDir), 0.0), F0);       
+    vec3 F    = fresnelSchlick(min(max(dot(H, viewDir), 0.0), 1.0), F0);
     
     vec3 kS = F;
     vec3 kD = vec3(1.0) - kS;
@@ -237,7 +237,7 @@ vec3 CalcPointLight(PointLight light, vec3 F0, vec3 fragPos, vec3 viewDir, Pixel
         // cook-torrance brdf
         const float NDF = DistributionGGX(pbr.normal, H, pbr.roughness);
         const float G   = GeometrySmith(pbr.normal, viewDir, L, pbr.roughness);      
-        const vec3 F    = fresnelSchlick(max(dot(H, viewDir), 0.0), F0);       
+        const vec3 F    = fresnelSchlick(min(max(dot(H, viewDir), 0.0), 1.0), F0);
         
         const vec3 kS = F;
         const vec3 kD = (vec3(1.0) - kS) * (1.0 - pbr.metallic);

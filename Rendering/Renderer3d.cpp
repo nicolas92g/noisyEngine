@@ -3,7 +3,7 @@
 #include <stb_image.h>
 #include <iostream>
 #include <glm/glm.hpp>
-#include "Timer.h"
+#include <Utils/Timer.h>
 #include <configNoisy.hpp>
 
 #define NS_IRRADIANCE_MAP_SAMPLER				28
@@ -136,9 +136,9 @@ void ns::Renderer3d::setDynamicUniforms() const
 	glActiveTexture(GL_TEXTURE0 + NS_BRDF_LUT_MAP);
 	glBindTexture(GL_TEXTURE_2D, brdfMap_);
 
-	pbr_->set("projView", cam_.getProjectionView());
+	pbr_->set("projView", cam_.projectionView());
 	pbr_->set("model", glm::scale(glm::vec3(1)));
-	pbr_->set("camPos", cam_.getPosition());
+	pbr_->set("camPos", cam_.position());
 
 	pbr_->set<int>("dirLightNumber", DirectionalLight::number());
 	pbr_->set<int>("pointLightNumber", PointLight::number());

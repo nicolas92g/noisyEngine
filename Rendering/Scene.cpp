@@ -15,7 +15,7 @@ ns::Scene::Scene(
 void ns::Scene::sendLights(const ns::Shader& shader) const
 {
 	clearLights();
-	for (const LightBase_* light : lights_)
+	for (LightBase_* light : lights_)
 	{
 		light->send(shader);
 	}
@@ -51,5 +51,26 @@ void ns::Scene::updateStationaries()
 	for (DrawableObject3d* motionLess : stationaries_)
 	{
 		motionLess->update();
+	}
+}
+
+void ns::Scene::addLight(LightBase_& light)
+{
+	addElement(&light, lights_);
+}
+
+void ns::Scene::removeLight(LightBase_& light)
+{
+	removeElement(&light, lights_);
+}
+
+void ns::Scene::addLights(const std::vector<std::shared_ptr<LightBase_>>& lights)
+{
+	const size_t size = lights_.size();
+	lights_.resize(size + lights.size());
+
+	for (size_t i = size; i < lights_.size(); i++)
+	{
+		lights_[i] = lights[i].get();
 	}
 }

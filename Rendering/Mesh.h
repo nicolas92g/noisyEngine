@@ -28,6 +28,14 @@ namespace ns {
 			bitangent(glm::vec3(0))
 		{}
 
+		Vertex(const glm::vec3& pos, const glm::vec3& normal, const glm::vec2& uv, const glm::vec3& tangent, const glm::vec3& bi) :
+			position(pos),
+			normal(normal),
+			uv(uv),
+			tangent(tangent),
+			bitangent(bi)
+		{}
+
 		glm::vec3 position;
 		glm::vec3 normal;
 		glm::vec2 uv;
