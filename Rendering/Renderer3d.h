@@ -12,12 +12,26 @@
 #include <memory>
 #include <thread>
 #include <mutex>
+#include <iostream>
 
 namespace ns {
+
+	struct Renderer3dCreateInfo {
+		Renderer3dCreateInfo() {
+			directionalLightsMax = 5;
+			pointLightsMax = 100;
+			spotLightsMax = 50;
+		}
+
+		unsigned int directionalLightsMax;
+		unsigned int pointLightsMax;
+		unsigned int spotLightsMax;
+	};
+
 	class Renderer3d
 	{
 	public:
-		Renderer3d(Window& window, Camera& camera, Scene& scene);
+		Renderer3d(Window& window, Camera& camera, Scene& scene, const Renderer3dCreateInfo& info = Renderer3dCreateInfo());
 		~Renderer3d();
 
 		void draw();
@@ -27,6 +41,8 @@ namespace ns {
 		void setScene(Scene& scene);
 
 	protected:
+		Renderer3dCreateInfo info_;
+
 		//physically based rendering system
 		unsigned int environmentMap_;
 		unsigned int preFilteredEnvironmentMap_;

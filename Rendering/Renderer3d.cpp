@@ -11,18 +11,20 @@
 #define NS_BRDF_LUT_MAP							30
 #define NS_SHADOW_MAP_SAMPLER					31
 
-ns::Renderer3d::Renderer3d(Window& window, Camera& camera, Scene& scene)
+ns::Renderer3d::Renderer3d(Window& window, Camera& camera, Scene& scene, const Renderer3dCreateInfo& info)
 	:
 	cam_(camera),
 	win_(window),
 	scene_(scene),
+	info_(info),
 	runTicks(true)
 {
 	std::vector<ns::Shader::Define> defines{
-		{"TEST_DEFINE", "69", ns::Shader::Stage::Fragment},
-		{"MAX_DIR_LIGHTS", "5", ns::Shader::Stage::Fragment},
+		{"MAX_DIR_LIGHTS", std::to_string(info_.directionalLightsMax), ns::Shader::Stage::Fragment},
+		{"MAX_POINT_LIGHTS", std::to_string(info_.pointLightsMax), ns::Shader::Stage::Fragment},
+		{"MAX_SPOT_LIGHTS", std::to_string(info_.spotLightsMax), ns::Shader::Stage::Fragment},
 	};
-	pbr_ = std::make_shared<ns::Shader>(NS_PATH"ns/shaders/renderer.vert", NS_PATH"ns/shaders/renderer.frag", nullptr, defines, true);
+	pbr_ = std::make_shared<ns::Shader>(NS_PATH"assets/shaders/renderer.vert", NS_PATH"assets/shaders/renderer.frag", nullptr, defines, true);
 
 	initPhysicallyBasedRenderingSystem();
 	launchTickThread();
@@ -147,7 +149,7 @@ void ns::Renderer3d::setDynamicUniforms() const
 
 void ns::Renderer3d::loadEnvironmentMap(const char* path, int res)
 {
-	ns::Shader equiRectToCubeMap(NS_PATH"ns/shaders/pbr/equirectangularToCubemap.vert", NS_PATH"ns/shaders/pbr/equirectangularToCubemap.frag");
+	ns::Shader equiRectToCubeMap(NS_PATH"assets/shaders/pbr/equirectangularToCubemap.vert", NS_PATH"assets/shaders/pbr/equirectangularToCubemap.frag");
 
 	stbi_set_flip_vertically_on_load(true);
 	int width, height, nrComponents;
@@ -235,7 +237,7 @@ void ns::Renderer3d::loadEnvironmentMap(const char* path, int res)
 
 void ns::Renderer3d::updateIrradianceMap()
 {
-	ns::Shader irradiance(NS_PATH"ns/shaders/pbr/irradianceMap.vert", NS_PATH"ns/shaders/pbr/irradianceMap.frag");
+	ns::Shader irradiance(NS_PATH"assets/shaders/pbr/irradianceMap.vert", NS_PATH"assets/shaders/pbr/irradianceMap.frag");
 
 	unsigned int captureFBO;
 	unsigned int captureRBO;
@@ -304,7 +306,7 @@ void ns::Renderer3d::updateIrradianceMap()
 
 void ns::Renderer3d::updatePreFilteredEnvironmentMap()
 {
-	ns::Shader prefilter(NS_PATH"ns/shaders/pbr/preFilter.vert", NS_PATH"ns/shaders/pbr/preFilter.frag");
+	ns::Shader prefilter(NS_PATH"assets/shaders/pbr/preFilter.vert", NS_PATH"assets/shaders/pbr/preFilter.frag");
 	constexpr int TEX_RES = 256;
 
 	unsigned int captureFBO;
@@ -387,7 +389,7 @@ void ns::Renderer3d::sendFixDataToShader() const
 
 void ns::Renderer3d::updateBRDFpreComputing()
 {
-	ns::Shader brdf(NS_PATH"ns/shaders/pbr/brdf.vert", NS_PATH"ns/shaders/pbr/brdf.frag");
+	ns::Shader brdf(NS_PATH"assets/shaders/pbr/brdf.vert", NS_PATH"assets/shaders/pbr/brdf.frag");
 
 	constexpr int TEX_RES = 1024;
 	bool blend = glIsEnabled(GL_BLEND);
