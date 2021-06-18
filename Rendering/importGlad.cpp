@@ -1,5 +1,5 @@
 #ifndef NDEBUG
-#include <glad4.3-Debug/glad.c>
+#include <glad.c>
 #else
-#include <glad4.3/glad.c>
+#include <glad.c>
 #endif // !NDEBUG

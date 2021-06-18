@@ -4,7 +4,7 @@
 ns::BillboardRenderer::BillboardRenderer(Camera& cam)
 	:
 	cam_(cam),
-	shader_(NS_PATH"ns/shaders/billboard.vert", NS_PATH"ns/shaders/billboard.frag", nullptr, {}, true)
+	shader_(NS_PATH"assets/shaders/billboard.vert", NS_PATH"assets/shaders/billboard.frag", nullptr, {}, true)
 {
 	Billboard::createPlane();
 }
