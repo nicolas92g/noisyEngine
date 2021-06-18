@@ -1,26 +1,33 @@
 #pragma once
 #include "Camera.h"
-#include "Billboard.h"
+#include <glm/glm.hpp>
+
+#include "Texture.h"
 
 namespace ns {
+	struct Billboard {
+		glm::vec3 position;
+		float scale;
+	};
+
 	class BillboardRenderer
 	{
 	public:
-		BillboardRenderer(Camera& cam);
+		BillboardRenderer(Camera& cam, const TextureView& texture, const std::vector<ns::Billboard>& billboards);
 		~BillboardRenderer();
 
-		void update();
-		void draw();
+		void setBillboards(const std::vector<ns::Billboard>& billboards);
 
-		void addBillboard(Billboard& billboard);
-		void removeBillboard(Billboard& billboard);
-
-		void clearBillboards();
+		void draw() const;
 
 	protected:
 		Shader shader_;
-
 		Camera& cam_;
-		std::vector<Billboard*> billboards_;
+		TextureView texture_;
+
+		uint32_t numberOfBillboards_;
+
+		GLuint VAO;
+		GLuint VBO;
 	};
 }

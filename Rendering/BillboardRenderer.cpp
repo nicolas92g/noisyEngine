@@ -1,51 +1,50 @@
 #include "BillboardRenderer.h"
 #include <configNoisy.hpp>
 
-ns::BillboardRenderer::BillboardRenderer(Camera& cam)
+ns::BillboardRenderer::BillboardRenderer(Camera& cam, const TextureView& texture, const std::vector<ns::Billboard>& billboards)
 	:
 	cam_(cam),
-	shader_(NS_PATH"assets/shaders/billboard.vert", NS_PATH"assets/shaders/billboard.frag", nullptr, {}, true)
+	texture_(texture),
+	shader_(NS_PATH"assets/shaders/billboard.vert", NS_PATH"assets/shaders/billboard.frag", NS_PATH"assets/shaders/billboard.geom", {}, true)
 {
-	Billboard::createPlane();
+	glGenVertexArrays(1, &VAO);
+	glBindVertexArray(VAO);
+
+	glGenBuffers(1, &VBO);
+	setBillboards(billboards);
+
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(Billboard), (void*)0);
 }
 
 ns::BillboardRenderer::~BillboardRenderer()
 {
-	Billboard::destroyPlane();
+	glDeleteBuffers(1, &VBO);
+	glDeleteVertexArrays(1, &VAO);
 }
 
-void ns::BillboardRenderer::update()
+void ns::BillboardRenderer::setBillboards(const std::vector<ns::Billboard>& billboards)
 {
-	for (Billboard* b : billboards_)
-		b->update();
+
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(Billboard) * billboards.size(), billboards.data(), GL_DYNAMIC_DRAW);
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	numberOfBillboards_ = billboards.size();
 }
 
-void ns::BillboardRenderer::draw()
+void ns::BillboardRenderer::draw() const
 {
+	glBindVertexArray(VAO);
+
+	shader_.set("cameraPos", cam_.position());
 	shader_.set("projView", cam_.projectionView());
-	shader_.set("cameraRight", cam_.rightDirection());
 	shader_.set("cameraUp", cam_.upDirection());
 
-	for (const Billboard* b : billboards_)
-		b->draw(shader_);
-}
+	glActiveTexture(GL_TEXTURE0);
+	texture_.bind();
 
-void ns::BillboardRenderer::addBillboard(Billboard& billboard)
-{
-	for (Billboard* b : billboards_) if (b == &billboard) return;
-
-	billboards_.push_back(&billboard);
-}
-
-void ns::BillboardRenderer::removeBillboard(Billboard& billboard)
-{
-	for (auto it = billboards_.begin(); it != billboards_.end(); it++) {
-		if (*it == &billboard)
-			billboards_.erase(it);
-	}
-}
-
-void ns::BillboardRenderer::clearBillboards()
-{
-	billboards_.clear();
+	glDrawArrays(GL_POINTS, 0, numberOfBillboards_);
 }
