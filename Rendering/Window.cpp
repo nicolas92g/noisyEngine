@@ -137,6 +137,11 @@ void ns::Window::setTitle(const char* newTitle)
     glfwSetWindowTitle(window_, newTitle);
 }
 
+void ns::Window::maximise()
+{
+    glfwMaximizeWindow(window_);
+}
+
 void ns::Window::swapBuffers() const
 {
     glfwSwapBuffers(window_);

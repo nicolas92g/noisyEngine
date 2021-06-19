@@ -33,6 +33,7 @@ namespace ns {
 		void hideCursor();
 		void showCursor();
 		void setTitle(const char* newTitle);
+		void maximise();
 
 
 		void swapBuffers() const;
