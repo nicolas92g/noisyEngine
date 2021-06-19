@@ -1,6 +1,8 @@
 #include "BillboardRenderer.h"
 #include <configNoisy.hpp>
 
+unsigned int ns::BillboardRenderer::textureId = 0;
+
 ns::BillboardRenderer::BillboardRenderer(Camera& cam, const TextureView& texture, const std::vector<ns::Billboard>& billboards)
 	:
 	cam_(cam),
@@ -45,6 +47,7 @@ void ns::BillboardRenderer::draw() const
 
 	glActiveTexture(GL_TEXTURE0);
 	texture_.bind();
+	//glBindTexture(GL_TEXTURE_2D, textureId);
 
 	glDrawArrays(GL_POINTS, 0, numberOfBillboards_);
 }

@@ -20,6 +20,8 @@ namespace ns {
 
 		void draw() const;
 
+		static unsigned int textureId;
+
 	protected:
 		Shader shader_;
 		Camera& cam_;
