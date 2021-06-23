@@ -24,6 +24,8 @@ namespace ns {
 		bool shouldNotClose() const;
 		bool key(int GLFW_KEY) const;
 		glm::vec<2, double> getCursorPos() const;
+		glm::ivec2 position() const;
+		glm::ivec2 size() const;
 
 		void setWidth(const int width);
 		void setHeight(const int height);
@@ -34,10 +36,13 @@ namespace ns {
 		void showCursor();
 		void setTitle(const char* newTitle);
 		void maximise();
+		void setFullscreen(bool fullscreen);
+		void setPosition(int x, int y);
 
 
 		void swapBuffers() const;
 
+		void inputFullscreen(int GLFW_KEY);
 		void recordFrameTiming();
 		double deltaTime() const;
 		uint32_t framerate() const;
@@ -47,6 +52,8 @@ namespace ns {
 		int height_;
 		double deltaTime_ = .16;
 		uint32_t fps_ = 60;
+		bool fullscreen_;
+		bool fullscreenKeyState_;
 
 	private:
 		static void framebufferResizeCallback(GLFWwindow* window, int width, int height);

@@ -5,7 +5,12 @@
 #include <iostream>
 #include <chrono>
 
-ns::Window::Window(uint32_t width, uint32_t height, const char* title, int samplesCount, bool transparentFB) : width_(width), height_(height)
+ns::Window::Window(uint32_t width, uint32_t height, const char* title, int samplesCount, bool transparentFB)
+    : 
+    width_(width), 
+    height_(height),    
+    fullscreen_(false),
+    fullscreenKeyState_(false)
 {
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -97,6 +102,20 @@ glm::vec<2, double> ns::Window::getCursorPos() const
     return {x, y};
 }
 
+glm::ivec2 ns::Window::position() const
+{
+    glm::ivec2 ret;
+    glfwGetWindowPos(window_, &ret.x, &ret.y);
+    return ret;
+}
+
+glm::ivec2 ns::Window::size() const
+{
+    glm::ivec2 ret;
+    glfwGetWindowSize(window_, &ret.x, &ret.y);
+    return ret;
+}
+
 void ns::Window::setWidth(const int width)
 {
     glfwSetWindowSize(window_, width, height_);
@@ -134,7 +153,8 @@ void ns::Window::showCursor()
 
 void ns::Window::setTitle(const char* newTitle)
 {
-    glfwSetWindowTitle(window_, newTitle);
+    if(!fullscreen_) //renaming window while beeing fulscreen is laggy for some reason
+        glfwSetWindowTitle(window_, newTitle);
 }
 
 void ns::Window::maximise()
@@ -142,9 +162,42 @@ void ns::Window::maximise()
     glfwMaximizeWindow(window_);
 }
 
+void ns::Window::setFullscreen(bool fullscreen)
+{
+    if (fullscreen and !fullscreen_) {
+        fullscreen_ = fullscreen;
+        GLFWmonitor* monitorToUse = glfwGetPrimaryMonitor();
+        int x, y;
+        glfwGetMonitorWorkarea(monitorToUse, &x, &y, &width_, &height_);
+
+        glfwSetWindowMonitor(window_, monitorToUse, x, y, width_, height_, GLFW_DONT_CARE);
+    }
+
+    if (!fullscreen and fullscreen_){
+        fullscreen_ = fullscreen;
+        glfwSetWindowMonitor(window_, nullptr, 100, 100, 800, 600, GLFW_DONT_CARE);
+        glfwRestoreWindow(window_);
+        maximise();
+
+    }
+}
+
+void ns::Window::setPosition(int x, int y)
+{
+    glfwSetWindowPos(window_, x, y);
+}
+
 void ns::Window::swapBuffers() const
 {
     glfwSwapBuffers(window_);
+}
+
+void ns::Window::inputFullscreen(int GLFW_KEY)
+{
+    if (key(GLFW_KEY_F11) and !fullscreenKeyState_) {
+        setFullscreen(!fullscreen_);
+    }
+    fullscreenKeyState_ = key(GLFW_KEY_F11);
 }
 
 void ns::Window::recordFrameTiming()
