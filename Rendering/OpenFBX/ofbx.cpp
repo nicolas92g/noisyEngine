@@ -10,6 +10,9 @@
 #include <vector>
 #include <iostream>
 
+//#define DISPLAY_MATERIALS_CONSTANTS
+//#define DISPLAY_MATERIAL_TEXTURES
+
 
 namespace ofbx
 {
@@ -1949,6 +1952,17 @@ namespace ofbx
 		{
 			if (prop->id == "P" && prop->first_property)
 			{
+#				ifdef DISPLAY_MATERIALS_CONSTANTS
+
+				char buffer[200];
+				prop->first_property->value.toString(buffer);
+				std::cout << "material constant : " << buffer << " = " << 
+					prop->getProperty(4)->getValue().toDouble() << ", "
+					<< prop->getProperty(4)->getValue().toDouble() << ", "
+					<< prop->getProperty(4)->getValue().toDouble() << std::endl;
+
+#				endif
+
 				if (prop->first_property->value == "DiffuseColor")
 				{
 					material->diffuse_color.r = (float)prop->getProperty(4)->getValue().toDouble();
@@ -3257,9 +3271,15 @@ namespace ofbx
 			}
 			case Object::Type::MATERIAL:
 			{
-				//char buffer[200];
-				//con.property.toString(buffer);
-				//std::cout << "Material property detected : " << buffer << std::endl;
+#				ifdef DISPLAY_MATERIAL_TEXTURES
+
+				char buffer[200];
+				con.property.toString(buffer);
+				std::cout << "Material property detected : " << buffer << std::endl;
+
+#				endif
+
+				
 
 				MaterialImpl* mat = (MaterialImpl*)parent;
 				if (child->getType() == Object::Type::TEXTURE)

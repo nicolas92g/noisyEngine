@@ -81,7 +81,9 @@ ns::Material::Material(const ofbx::Material* mtl, const std::string& texturesDir
 	Material()
 {
 	albedo_ = to_vec3(mtl->getDiffuseColor());
-	roughness_ = mtl->getShininess();
+	metallic_ = mtl->getReflectionFactor();
+
+	std::cout << "roughness = " << roughness_ << std::endl;
 	name_ = mtl->name;
 
 	const ofbx::Texture* tex;
