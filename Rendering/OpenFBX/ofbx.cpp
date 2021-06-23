@@ -3257,9 +3257,9 @@ namespace ofbx
 			}
 			case Object::Type::MATERIAL:
 			{
-				char buffer[200];
-				con.property.toString(buffer);
-				std::cout << "Material property detected : " << buffer << std::endl;
+				//char buffer[200];
+				//con.property.toString(buffer);
+				//std::cout << "Material property detected : " << buffer << std::endl;
 
 				MaterialImpl* mat = (MaterialImpl*)parent;
 				if (child->getType() == Object::Type::TEXTURE)

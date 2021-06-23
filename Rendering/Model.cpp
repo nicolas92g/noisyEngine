@@ -156,8 +156,6 @@ void ns::Model::createMeshFromFBX(const ofbx::Mesh& mesh, ofbx::IScene& scene)
 		materials_.push_back(std::make_shared<Material>(mesh.getMaterial(0), dir_));
 	}
 
-	Material::displayTextures(mesh.getMaterial(0));
-
 	meshes_.push_back(std::make_shared<ns::Mesh>(vertices, indices, *materials_[materials_.size() - 1], info));
 }
 

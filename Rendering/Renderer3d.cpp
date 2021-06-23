@@ -5,6 +5,7 @@
 #include <glm/glm.hpp>
 #include <Utils/Timer.h>
 #include <configNoisy.hpp>
+#include "BillboardRenderer.h"
 
 #define NS_IRRADIANCE_MAP_SAMPLER				28
 #define NS_PREFILTERED_ENVIRONMENT_MAP_SAMPLER	29
@@ -17,7 +18,9 @@ ns::Renderer3d::Renderer3d(Window& window, Camera& camera, Scene& scene, const R
 	win_(window),
 	scene_(scene),
 	info_(info),
-	runTicks(true)
+	runTicks(true),
+	skyBox(cam_, 0)
+
 {
 	std::vector<ns::Shader::Define> defines{
 		{"MAX_DIR_LIGHTS", std::to_string(info_.directionalLightsMax), ns::Shader::Stage::Fragment},
@@ -38,16 +41,20 @@ ns::Renderer3d::Renderer3d(Window& window, Camera& camera, Scene& scene, const R
 	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
 	glClearColor(.7f, 1, 1, 1.0);
+
+	skyBox.setCubeMapTexture(environmentMap_);
 }
 
 ns::Renderer3d::~Renderer3d()
 {
 	runTicks = false;
+	glDeleteTextures(1, &irradianceMap_);
 }
 
 void ns::Renderer3d::draw()
 {
 	cam_.calculateMatrix(win_);
+	skyBox.draw();
 
 	scene_.sendLights(*pbr_);
 
@@ -76,7 +83,7 @@ void ns::Renderer3d::initPhysicallyBasedRenderingSystem()
 	createCube();
 	createPlaneMesh();
 
-	loadEnvironmentMap("resources/immenstadter_horn_2k.hdr", 1024);
+	loadEnvironmentMap("resources/sky.hdr", 1024);
 
 	updateIrradianceMap();
 	updatePreFilteredEnvironmentMap();
@@ -152,9 +159,11 @@ void ns::Renderer3d::loadEnvironmentMap(const char* path, int res)
 	ns::Shader equiRectToCubeMap(NS_PATH"assets/shaders/pbr/equirectangularToCubemap.vert", NS_PATH"assets/shaders/pbr/equirectangularToCubemap.frag");
 
 	stbi_set_flip_vertically_on_load(true);
-	int width, height, nrComponents;
-	float* data = stbi_loadf(path, &width, &height, &nrComponents, 0);
-	unsigned int hdrTexture = 0;
+
+	int width, height;
+	float* data = stbi_loadf(path, &width, &height, nullptr, 3);
+	unsigned int hdrTexture;
+
 	if (data)
 	{
 		glGenTextures(1, &hdrTexture);
@@ -171,6 +180,7 @@ void ns::Renderer3d::loadEnvironmentMap(const char* path, int res)
 	else
 	{
 		std::cerr << "CubeMap error : can't load file : " << path << std::endl;
+		return;
 	}
 
 	unsigned int captureFBO, captureRBO;
@@ -233,6 +243,11 @@ void ns::Renderer3d::loadEnvironmentMap(const char* path, int res)
 
 	}
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glDeleteTextures(1, &hdrTexture);
+	glDeleteFramebuffers(1, &captureFBO);
+	glDeleteRenderbuffers(1, &captureRBO);
+
+	
 }
 
 void ns::Renderer3d::updateIrradianceMap()
@@ -302,6 +317,9 @@ void ns::Renderer3d::updateIrradianceMap()
 
 	}
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	glDeleteFramebuffers(1, &captureFBO);
+	glDeleteRenderbuffers(1, &captureRBO);
 }
 
 void ns::Renderer3d::updatePreFilteredEnvironmentMap()

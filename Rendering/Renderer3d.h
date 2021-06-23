@@ -7,6 +7,7 @@
 #include "Model.h"
 #include "Object3d.h"
 #include "Scene.h"
+#include "SkyMapRenderer.h"
 
 //stl
 #include <memory>
@@ -78,5 +79,7 @@ namespace ns {
 		bool runTicks;
 
 		void setDynamicUniforms() const;
+
+		SkyMapRenderer skyBox;
 	};
 }

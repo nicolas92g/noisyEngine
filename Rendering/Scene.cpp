@@ -23,6 +23,7 @@ void ns::Scene::sendLights(const ns::Shader& shader) const
 
 void ns::Scene::draw(const ns::Shader& shader) const
 {
+	glDepthFunc(GL_LESS);
 	//draw motionless Objects
 	for (const DrawableObject3d* stationary : stationaries_)
 	{
