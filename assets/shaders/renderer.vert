@@ -8,6 +8,7 @@ layout(location = 4) in vec3 inBitangent;
 
 uniform mat4 model;
 uniform mat4 projView;
+uniform bool computeBitangents;
 
 out vec2 uv;
 out vec3 outNormal;
@@ -22,12 +23,20 @@ void main(){
 	fragPos = vec3(model * vec4(inPos, 1));
 
 	vec3 T = normalize(vec3(model * vec4(inTangent, 0.0)));
-    vec3 B = normalize(vec3(model * vec4(inBitangent, 0.0)));
+	vec3 B;
     vec3 N = normalize(vec3(model * vec4(inNormal, 0.0)));
 
-    // re-orthogonalize T with respect to N in case of a scale matrix like vec3(6, 1, 2) 
-    //T = normalize(T - dot(T, N) * N);
-    //vec3 B = cross(N, T);
+	if(computeBitangents)
+	{
+		T = normalize(T - dot(T, N) * N);
+		B = cross(N, T);
+	}
+	else
+	{
+		B = normalize(vec3(model * vec4(inBitangent, 0.0)));
+	}
+	
+	
 
     TBN = mat3(T, B, N);
 }

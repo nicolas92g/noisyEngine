@@ -136,8 +136,8 @@ void main(){
     color = pow(color.rgb, vec3(1.0/2.2));
     outColor = vec4(vec3(color), pbr.alpha);
     
-    //outColor = texture(mat.ambientOcclusionMap, uv);
-    //outColor.rgb = vec3(mat.hasAmbientOcclusionMap);
+    //outColor = texture(mat.normalMap, uv);
+    //outColor.rgb = vec3(pbr.normal);
 }
 
 vec3 gammaCorrect(vec3 value){
@@ -164,7 +164,7 @@ PixelMaterial getMaterial(){
 
     //roughness
     if(mat.hasRoughnessMap){
-        ret.roughness = gammaCorrect(texture(mat.roughnessMap, uv).r);
+        ret.roughness = texture(mat.roughnessMap, uv).r;
     }
     else{
         ret.roughness = mat.roughness;
@@ -271,10 +271,10 @@ vec3 CalcSpotLight(SpotLight spotLight, vec3 F0, vec3 fragPos, vec3 viewDir, Pix
 }
 
 vec3 calcNormalMapping(){
-    return normalize(TBN * (texture(mat.normalMap, uv).rgb * 2.0 - 1.0));
+    return normalize(TBN * ((texture(mat.normalMap, uv).rgb) * 2.0 - 1.0));
 }
 
-vec3 calcFlatNormalMapping(){
+vec3 calcFlatNormalMapping(){   
     return normalize(TBN * vec3(0, 0, 1));
 }
 
