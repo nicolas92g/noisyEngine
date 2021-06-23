@@ -3,6 +3,7 @@
 
 #include <assimp/scene.h>
 #include <memory>
+#include <ofbx.h>
 
 #include "Light.h"
 
@@ -24,23 +25,30 @@ namespace ns {
 		std::vector<std::shared_ptr<ns::LightBase_>> getLights() const;
 		ns::Material* getMaterial(const std::string& materialName);
 	protected:
-		const aiScene* scene_;
-
 		std::string filepath_;
 		std::string dir_;
 
+		//mesh content
 		std::vector<std::shared_ptr<Mesh>> meshes_;
 		std::vector<std::shared_ptr<ns::Material>> materials_;
 		std::vector<std::shared_ptr<LightBase_>> lights_;
 
+		//loading with assimp
 	protected:
-		void readNodesFromNode(aiNode* node);
-		void createMeshFromNode(aiMesh* mesh);
-
-		void getLights();
-
-		GLuint pickIndexType(size_t numberOfPositions) const;
-
+		bool importWithAssimp();
 		
+		void readNodesFromNode(aiNode* node, const aiScene* scene);
+		void createMeshFromNode(aiMesh* mesh, const aiScene* scene);
+
+		void getLights(const aiScene* scene);
+
+		//loading with OpenFBX
+	protected:
+		bool importWithOpenFBX();
+
+		void createMeshFromFBX(const ofbx::Mesh& mesh, ofbx::IScene& scene);
+
+	protected:
+		GLuint pickIndexType(size_t numberOfPositions) const;
 	};
 };

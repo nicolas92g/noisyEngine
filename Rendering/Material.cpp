@@ -3,24 +3,26 @@
 #include <glad/glad.h>
 #include <iostream>
 
+#include <Utils/utils.h>
+
+#define DEFAULT_ALBEDO glm::vec3(.5f)
+#define DEFAULT_ROUGHNESS .9f
+#define DEFAULT_METALLIC .1f
+
 std::vector<std::unique_ptr<ns::Texture>> ns::Material::textures;
 bool ns::Material::describeMaterialsWhenCreate = false;
 
 ns::Material::Material()
 	:
-	albedo_(.5f),
-	roughness_(.8f),
-	metallic_(.1f),
+	albedo_(DEFAULT_ALBEDO),
+	roughness_(DEFAULT_ROUGHNESS),
+	metallic_(DEFAULT_METALLIC),
 	name_("unnamed")
-{
-}
+{}
 
-ns::Material::Material(aiMaterial* mtl, const std::string& texturesDirectory,  aiTexture** const embeddedTextures, int numberOfEmbeddedTextures)
+ns::Material::Material(aiMaterial* mtl, const std::string& texturesDirectory)
 	:
-	albedo_(.5f),
-	roughness_(.8f),
-	metallic_(.1f),
-	name_(mtl->GetName().C_Str())
+	Material()
 {
 	if (describeMaterialsWhenCreate) describeMaterial(mtl);
 	aiString path;
@@ -28,43 +30,43 @@ ns::Material::Material(aiMaterial* mtl, const std::string& texturesDirectory,  a
 	//albedo loading
 	if (mtl->GetTextureCount(aiTextureType::aiTextureType_BASE_COLOR)) {
 		mtl->GetTexture(aiTextureType::aiTextureType_BASE_COLOR, 0, &path);
-		albedoMap_ = addTexture(texturesDirectory, path, embeddedTextures, numberOfEmbeddedTextures);
+		albedoMap_ = addTexture(texturesDirectory, path.C_Str());
 	}
 	else if (mtl->GetTextureCount(aiTextureType::aiTextureType_DIFFUSE)) {
 		mtl->GetTexture(aiTextureType::aiTextureType_DIFFUSE, 0, &path);
-		albedoMap_ = addTexture(texturesDirectory, path, embeddedTextures, numberOfEmbeddedTextures);
+		albedoMap_ = addTexture(texturesDirectory, path.C_Str());
 	}
 
 	//roughness loading
 	if (mtl->GetTextureCount(aiTextureType::aiTextureType_SHININESS)) {
 		mtl->GetTexture(aiTextureType::aiTextureType_SHININESS, 0, &path);
-		roughnessMap_ = addTexture(texturesDirectory, path, embeddedTextures, numberOfEmbeddedTextures);
+		roughnessMap_ = addTexture(texturesDirectory, path.C_Str());
 	}
 
 	//metallic loading
 	if (mtl->GetTextureCount(aiTextureType::aiTextureType_SPECULAR)) {
 		mtl->GetTexture(aiTextureType::aiTextureType_SPECULAR, 0, &path);
-		metallicMap_ = addTexture(texturesDirectory, path, embeddedTextures, numberOfEmbeddedTextures);
+		metallicMap_ = addTexture(texturesDirectory, path.C_Str());
 	}
 	
 	//normal loading
 	if (mtl->GetTextureCount(aiTextureType::aiTextureType_HEIGHT)) {
 		mtl->GetTexture(aiTextureType::aiTextureType_HEIGHT, 0, &path);
-		normalMap_ = addTexture(texturesDirectory, path, embeddedTextures, numberOfEmbeddedTextures);
+		normalMap_ = addTexture(texturesDirectory, path.C_Str());
 	}
 	else if (mtl->GetTextureCount(aiTextureType::aiTextureType_NORMALS)) {
 		mtl->GetTexture(aiTextureType::aiTextureType_NORMALS, 0, &path);
-		normalMap_ = addTexture(texturesDirectory, path, embeddedTextures, numberOfEmbeddedTextures);
+		normalMap_ = addTexture(texturesDirectory, path.C_Str());
 	}
 
 	//ambient occlusion loading
 	if (mtl->GetTextureCount(aiTextureType::aiTextureType_AMBIENT_OCCLUSION)) {
 		mtl->GetTexture(aiTextureType::aiTextureType_AMBIENT_OCCLUSION, 0, &path);
-		ambientOcclusionMap_ = addTexture(texturesDirectory, path, embeddedTextures, numberOfEmbeddedTextures);
+		ambientOcclusionMap_ = addTexture(texturesDirectory, path.C_Str());
 	}
 	else if (mtl->GetTextureCount(aiTextureType::aiTextureType_EMISSIVE)) {
 		mtl->GetTexture(aiTextureType::aiTextureType_EMISSIVE, 0, &path);
-		ambientOcclusionMap_ = addTexture(texturesDirectory, path, embeddedTextures, numberOfEmbeddedTextures);
+		ambientOcclusionMap_ = addTexture(texturesDirectory, path.C_Str());
 	}
 
 	if (!albedoMap_.has_value()) {
@@ -72,11 +74,55 @@ ns::Material::Material(aiMaterial* mtl, const std::string& texturesDirectory,  a
 		aiGetMaterialColor(mtl, AI_MATKEY_COLOR_DIFFUSE, &diffuse);
 		convertAiColor4dToVec3(diffuse, albedo_);
 	}
+}
 
-	//if (!roughnessMap_.has_value()) {
-	//	aiGetMaterialFloat(mtl, AI_MATKEY_SHININESS, &roughness_);
-	//	std::cout << roughness_ << std::endl;
-	//}
+ns::Material::Material(const ofbx::Material* mtl, const std::string& texturesDirectory)
+	: 
+	Material()
+{
+	albedo_ = to_vec3(mtl->getDiffuseColor());
+	roughness_ = mtl->getShininess();
+	name_ = mtl->name;
+
+	const ofbx::Texture* tex;
+	char buffer[200];
+	
+	tex = mtl->getTexture(ofbx::Texture::TextureType::DIFFUSE);
+	if (tex) {
+		tex->getFileName().toString(buffer);
+		albedoMap_ = addTexture("", buffer);
+	}
+
+	tex = mtl->getTexture(ofbx::Texture::TextureType::SPECULAR);
+	if (tex) {
+		tex->getFileName().toString(buffer);
+		metallicMap_ = addTexture("", buffer);
+	}
+
+	tex = mtl->getTexture(ofbx::Texture::TextureType::REFLECTION);
+	if (tex) {
+		tex->getFileName().toString(buffer);
+		metallicMap_ = addTexture("", buffer);
+	}
+
+	tex = mtl->getTexture(ofbx::Texture::TextureType::SHININESS);
+	if (tex) {
+		tex->getFileName().toString(buffer);
+		roughnessMap_ = addTexture("", buffer);
+	}
+
+	tex = mtl->getTexture(ofbx::Texture::TextureType::NORMAL);
+	if (tex) {
+		tex->getFileName().toString(buffer);
+		normalMap_ = addTexture("", buffer);
+	}
+
+	tex = mtl->getTexture(ofbx::Texture::TextureType::EMISSIVE);
+	if (tex) {
+		tex->getFileName().toString(buffer);
+		ambientOcclusionMap_ = addTexture("", buffer);
+	}
+
 }
 
 void ns::Material::bind(const ns::Shader& shader) const
@@ -265,33 +311,20 @@ void ns::Material::clearTextures()
 	textures.clear();
 }
 
-ns::TextureView ns::Material::addTexture(const std::string& directory, const aiString& path_, aiTexture** const embeddedTextures, int numberOfEmbeddedTextures)
+ns::TextureView ns::Material::addTexture(const std::string& directory, const std::string& path)
 {
-	//embedded texture ?
-	static std::string path;
-	path = path_.C_Str();
+	std::string filepath;
+	if(!directory.empty())
+		filepath = directory + "/" + path;
+	else
+		filepath = path;
 
-	if (path.size() < 3 and path.find('*') != std::string::npos) {
-		path = path[1];
-		std::cout << "path = |" << path << "|" << std::endl;
-		int textureIndex = stoi(path);
-
-		if (textureIndex < numberOfEmbeddedTextures && textureIndex >= 0)
-			textures.push_back(std::make_unique<Texture>(embeddedTextures[textureIndex]));
-		else
-			std::cerr << "ns::Material Error : invalid embbeded texture index ?!\n";
-			
-	}
-	else {
-		std::string filepath(directory + "/" + path);
-
-		for (const auto& texture : textures) {
-			if (texture->filePath() == filepath) {
-				return *texture;
-			}
+	for (const auto& texture : textures) {
+		if (texture->filePath() == filepath) {
+			return *texture;
 		}
-		textures.push_back(std::make_unique<Texture>(filepath.c_str()));
 	}
+	textures.push_back(std::make_unique<Texture>(filepath.c_str()));
 
 	return *textures[textures.size() - 1];
 }
@@ -303,5 +336,53 @@ void ns::Material::removeTexture(const TextureView& view)
 			textures.erase(it);
 			return;
 		}
+	}
+}
+
+void ns::Material::displayTextures(const ofbx::Material* mtl)
+{
+	const ofbx::Texture* tex;
+	char buffer[200];
+
+	tex = mtl->getTexture(ofbx::Texture::TextureType::DIFFUSE);
+	if (tex) {
+		tex->getFileName().toString(buffer);
+		std::cout << "texture  diffuse : " << buffer << std::endl;
+	}
+
+	tex = mtl->getTexture(ofbx::Texture::TextureType::SPECULAR);
+	if (tex) {
+		tex->getFileName().toString(buffer);
+		std::cout << "texture specular : " << buffer << std::endl;
+	}
+
+	tex = mtl->getTexture(ofbx::Texture::TextureType::SHININESS);
+	if (tex) {
+		tex->getFileName().toString(buffer);
+		std::cout << "texture  SHININESS : " << buffer << std::endl;
+	}
+
+	tex = mtl->getTexture(ofbx::Texture::TextureType::NORMAL);
+	if (tex) {
+		tex->getFileName().toString(buffer);
+		std::cout << "texture NORMAL  : " << buffer << std::endl;
+	}
+
+	tex = mtl->getTexture(ofbx::Texture::TextureType::EMISSIVE);
+	if (tex) {
+		tex->getFileName().toString(buffer);
+		std::cout << "texture  EMISSIVE : " << buffer << std::endl;
+	}
+
+	tex = mtl->getTexture(ofbx::Texture::TextureType::AMBIENT);
+	if (tex) {
+		tex->getFileName().toString(buffer);
+		std::cout << "texture AMBIENT  : " << buffer << std::endl;
+	}
+
+	tex = mtl->getTexture(ofbx::Texture::TextureType::REFLECTION);
+	if (tex) {
+		tex->getFileName().toString(buffer);
+		std::cout << "texture  REFLECTION : " << buffer << std::endl;
 	}
 }

@@ -41,6 +41,10 @@ namespace ns {
 		glm::vec2 uv;
 		glm::vec3 tangent;
 		glm::vec3 bitangent;
+
+	public:
+		void genTangent();
+		void genBitangent();
 	};
 
 	struct MeshConfigInfo {
@@ -48,10 +52,12 @@ namespace ns {
 			name("unnamed"),
 			supportNormalMapping(true),
 			primitive(GL_TRIANGLES),
-			indexType(GL_UNSIGNED_INT)
+			indexType(GL_UNSIGNED_INT),
+			hasBitangents(true)
 		{}
 		std::string name;
 		bool supportNormalMapping;
+		bool hasBitangents;
 		GLuint primitive;
 		GLuint indexType;
 	};

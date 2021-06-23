@@ -50,7 +50,6 @@ ns::Mesh::Mesh(
 
     //unbind vertex array 
     glBindVertexArray(0);
-
 }
 
 ns::Mesh::~Mesh()
@@ -67,6 +66,7 @@ void ns::Mesh::draw(const Shader& shader) const
     shader.use();
 
     material_.bind(shader);
+    shader.set("computeBitangents", !info_.hasBitangents);
 
     glBindVertexArray(vertexArrayObject_);
 
@@ -138,4 +138,26 @@ const short ns::Mesh::getIndexTypeSize() const
     default:
         return sizeof(unsigned int);
     }
+}
+
+void ns::Vertex::genTangent()
+{
+    using namespace glm;
+
+    vec3 c1 = cross(normal, vec3(0.0, 0.0, 1.0));
+    vec3 c2 = cross(normal, vec3(0.0, 1.0, 0.0));
+
+    if (length(c1) > length(c2))
+        tangent = c1;
+    else 
+        tangent = c2;
+
+    tangent = normalize(tangent);
+}
+
+void ns::Vertex::genBitangent()
+{
+    using namespace glm;
+
+    bitangent = normalize(cross(normal, tangent));
 }

@@ -14,12 +14,16 @@
 //assimp
 #include <assimp/material.h>
 
+//OpenFBX
+#include <ofbx.h>
+
 namespace ns {
 	class Material
 	{
 	public:
 		Material();
-		Material(aiMaterial* mtl, const std::string& texturesDirectory, aiTexture** const embeddedTextures, int numberOfEmbeddedTextures);
+		Material(aiMaterial* mtl, const std::string& texturesDirectory);
+		Material(const ofbx::Material* mtl, const std::string& texturesDirectory);
 
 		void bind(const ns::Shader& shader) const;
 		const std::string& name() const;
@@ -46,10 +50,13 @@ namespace ns {
 
 		static void convertAiColor4dToVec3(const aiColor4D& ai4d, glm::vec3& vec);
 		static void describeMaterial(aiMaterial* mtl);
+		static void displayTextures(const ofbx::Material* mtl);
 
 		//material textures usage:
 		static void clearTextures();
 		static bool describeMaterialsWhenCreate;
+
+		
 
 	private:
 		std::string name_;
@@ -73,8 +80,7 @@ namespace ns {
 		std::optional<TextureView> ambientOcclusionMap_;
 
 		static std::vector<std::unique_ptr<ns::Texture>> textures;
-		static TextureView addTexture(const std::string& directory, const aiString& path, aiTexture** const embeddedTextures, int numberOfEmbeddedTextures);
+		static TextureView addTexture(const std::string& directory, const std::string& path);
 		static void removeTexture(const TextureView& view);
-		
 	};
 }
