@@ -21,30 +21,34 @@ namespace ns {
 	class Material
 	{
 	public:
-		Material();
+		Material(const glm::vec3& albedo = glm::vec3(.5f), float roughness = .9f, float metallic = .01f, float emission = 0.f);
 		Material(aiMaterial* mtl, const std::string& texturesDirectory);
 		Material(const ofbx::Material* mtl, const std::string& texturesDirectory);
 
 		void bind(const ns::Shader& shader) const;
 		const std::string& name() const;
 
+		void setEmissionConstant(const glm::vec3& emission);
 		void setRoughnessConstant(float roughness);
 		void setMetallicConstant(float metallic);
 		void setAlbedoColor(const glm::vec3& color);
 
 		float roughness() const;
+		glm::vec3 emission() const;
 		float metallic() const;
 		glm::vec3 albedo() const;
 
 		void setAlbedoTexture(const TextureView& texture);
 		void setRoughnessTexture(const TextureView& texture);
 		void setMetallicTexture(const TextureView& texture);
+		void setEmissionTexture(const TextureView& texture);
 		void setNormalTexture(const TextureView& texture);
 		void setAmbientOcclusionTexture(const TextureView& texture);
 
 		void removeAlbedoTexture();
 		void removeRoughnessTexture();
 		void removeMetallicTexture();
+		void removeEmissionTexture();
 		void removeNormalTexture();
 		void removeAmbientOcclusionTexture();
 
@@ -54,9 +58,7 @@ namespace ns {
 
 		//material textures usage:
 		static void clearTextures();
-		static bool describeMaterialsWhenCreate;
-
-		
+		static bool describeMaterialsWhenCreate;	
 
 	private:
 		std::string name_;
@@ -72,6 +74,10 @@ namespace ns {
 		//metallic value
 		std::optional<TextureView> metallicMap_;
 		float metallic_;
+
+		//emission value
+		std::optional<TextureView> emissionMap_;
+		glm::vec3 emission_;
 
 		//normal mapping value
 		std::optional<TextureView> normalMap_;

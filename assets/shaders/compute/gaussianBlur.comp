@@ -1,0 +1,60 @@
+#version 430 core
+#define NS_NUM_WORK_GROUP_X 32
+#define NS_NUM_WORK_GROUP_Y 32
+
+layout( local_size_x = NS_NUM_WORK_GROUP_X, local_size_y = NS_NUM_WORK_GROUP_Y) in;
+layout(rgba16f, binding = 0) uniform image2D outTex;
+
+uniform bool horizontal;
+uniform sampler2D input;
+
+uniform float weight[7] = float[](0.2270270270, 0.1945945946, 0.1216216216, 0.0540540541, 0.0162162162, 0.0152162162, 0.0102162162);
+void main(){
+	const ivec2 pixel_coords = ivec2(gl_GlobalInvocationID.xy);
+	const ivec2 size = imageSize(outTex);
+
+	if(pixel_coords.x > size.x) return;
+	if(pixel_coords.y > size.y) return;
+
+    vec2 uv = ((vec2(pixel_coords) + vec2(.5)) / vec2(size));
+
+    vec3 result = texture(input, uv).rgb * weight[0];
+    const vec2 texel = 2.0 / size;
+    
+    if(horizontal)
+    {
+        for(int i = 1; i < 7; ++i)
+        {
+            const float step_ = i * texel.x;
+            const vec2 pos = uv + vec2(step_, 0);
+            if(pos.x > 1) return;
+
+            const vec2 neg = uv - vec2(step_, 0);
+            if(neg.x < 0.0) return;
+
+            result += texture(input, pos).rgb * weight[i];
+            result += texture(input, neg).rgb * weight[i];
+        }
+    }
+    else
+    {
+        for(int i = 1; i < 7; ++i)
+        {
+            const float step_ = i * texel.y;
+            const vec2 pos = uv + vec2(0, step_);
+            if(pos.y > 1) return;
+
+            const vec2 neg = uv - vec2(0, step_);
+            if(neg.y < 0.0) return;
+
+            result += texture(input, pos).rgb * weight[i];
+            result += texture(input, neg).rgb * weight[i];
+        }
+    }
+
+    result += vec3((gl_LocalInvocationID.y / gl_WorkGroupSize.y));
+
+	vec4 color = vec4(result, 1);
+    
+	imageStore(outTex, pixel_coords, color);
+}

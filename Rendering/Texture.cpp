@@ -1,12 +1,14 @@
 #include "Texture.h"
 
 //stl
-#include <iostream>
 #include <thread>
 
 //stb_image
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
+
+//ns
+#include <Utils/DebugLayer.h>
 
 #ifndef NDEBUG
 std::vector<std::string> ns::Texture::alreadyLoadedTextures;
@@ -23,7 +25,7 @@ ns::Texture::Texture(const char* textureFilePath)
 	glBindTexture(GL_TEXTURE_2D, id_);
 	
 	if (!data) {
-		std::cerr << "failed to load a texture at : " << textureFilePath << std::endl;
+		Debug::get() << "failed to load a texture at : " << textureFilePath << std::endl;
 		loaded_ = false;
 		return;
 	}
@@ -31,7 +33,7 @@ ns::Texture::Texture(const char* textureFilePath)
 #	ifndef NDEBUG
 
 	if (std::find(alreadyLoadedTextures.begin(), alreadyLoadedTextures.end(), filePath_) != alreadyLoadedTextures.end()) {
-		std::cerr << "PERFORMANCE WARNING !!! : same texture loaded twice : " << filePath_ << std::endl;
+		Debug::get() << "PERFORMANCE WARNING !!! : same texture loaded twice : " << filePath_ << std::endl;
 	}
 	else {
 		alreadyLoadedTextures.push_back(filePath_);
@@ -54,7 +56,7 @@ ns::Texture::Texture(const char* textureFilePath)
 		format = GL_RGBA;
 		break;
 	default:
-		std::cerr << "texture " << filePath_ << " has " << numberOfChannels_ << " number of channels !\n";
+		Debug::get() << "texture " << filePath_ << " has " << numberOfChannels_ << " number of channels !\n";
 		return;
 	}
 
@@ -77,7 +79,7 @@ ns::Texture::Texture(aiTexture* const assimpTexture)
 	filePath_(NS_EMBEMBEDDED_FILEPATH_NAME),
 	numberOfChannels_(4)
 {
-	std::cerr << "embedded files are not supported yet !\n";
+	Debug::get() << "embedded files are not supported yet !\n";
 	return;
 	glGenTextures(1, &id_);
 	glBindTexture(GL_TEXTURE_2D, id_);
@@ -99,7 +101,7 @@ ns::Texture::Texture(aiTexture* const assimpTexture)
 			sqrt(width_), sqrt(width_), 0, width_, assimpTexture->pcData);
 	}
 	else {
-		std::cerr << "can't load compressed texture under format :" << assimpTexture->achFormatHint << "\n";
+		Debug::get() << "can't load compressed texture under format :" << assimpTexture->achFormatHint << "\n";
 	}
 
 	glGenerateMipmap(GL_TEXTURE_2D);
@@ -187,7 +189,7 @@ void ns::TextureView::bind() const
 #	ifndef NDEBUG
 	const GLenum errorCode = glGetError();
 	if (errorCode) {
-		std::cerr << "an OpenGL error " << errorCode << " occured while binding a texture view !\n";
+		Debug::get() << "an OpenGL error " << errorCode << " occured while binding a texture view !\n";
 	}
 #	endif // NDEBUG
 }

@@ -15,7 +15,6 @@ namespace ns {
 			bool transparentFramebuffer = false);
 
 		Window(Window&) = delete;
-		Window& operator=(Window&) = delete;
 
 		~Window();
 
@@ -26,6 +25,8 @@ namespace ns {
 		glm::vec<2, double> getCursorPos() const;
 		glm::ivec2 position() const;
 		glm::ivec2 size() const;
+		bool isFocused() const;
+		GLFWmonitor* monitor() const;
 
 		void setWidth(const int width);
 		void setHeight(const int height);
@@ -39,7 +40,8 @@ namespace ns {
 		void setFullscreen(bool fullscreen);
 		void setPosition(int x, int y);
 
-
+		void beginFrame();
+		void endFrame();
 		void swapBuffers() const;
 
 		void inputFullscreen(int GLFW_KEY);

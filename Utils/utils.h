@@ -16,6 +16,7 @@ namespace ns {
 	glm::vec3 to_vec3(const ofbx::Vec3& vec);
 
 	glm::vec4 to_vec4(const ofbx::Vec4& vec);
+	void to_mat4(glm::mat4& output, const aiMatrix4x4* mat);
 
 }
 

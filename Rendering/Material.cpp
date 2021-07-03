@@ -4,20 +4,17 @@
 #include <iostream>
 
 #include <Utils/utils.h>
-
-#define DEFAULT_ALBEDO glm::vec3(.5f)
-#define DEFAULT_ROUGHNESS .9f
-#define DEFAULT_METALLIC .1f
+#include <Utils/DebugLayer.h>
 
 std::vector<std::unique_ptr<ns::Texture>> ns::Material::textures;
 bool ns::Material::describeMaterialsWhenCreate = false;
 
-ns::Material::Material()
+ns::Material::Material(const glm::vec3& albedo, float roughness, float metallic, float emission)
 	:
-	albedo_(DEFAULT_ALBEDO),
-	roughness_(DEFAULT_ROUGHNESS),
-	metallic_(DEFAULT_METALLIC),
-	name_("unnamed")
+	albedo_(albedo),
+	roughness_(roughness),
+	metallic_(metallic),
+	emission_(emission)
 {}
 
 ns::Material::Material(aiMaterial* mtl, const std::string& texturesDirectory)
@@ -48,6 +45,12 @@ ns::Material::Material(aiMaterial* mtl, const std::string& texturesDirectory)
 		mtl->GetTexture(aiTextureType::aiTextureType_SPECULAR, 0, &path);
 		metallicMap_ = addTexture(texturesDirectory, path.C_Str());
 	}
+
+	//emission loading
+	if (mtl->GetTextureCount(aiTextureType::aiTextureType_EMISSIVE)) {
+		mtl->GetTexture(aiTextureType::aiTextureType_EMISSIVE, 0, &path);
+		emissionMap_ = addTexture(texturesDirectory, path.C_Str());
+	}
 	
 	//normal loading
 	if (mtl->GetTextureCount(aiTextureType::aiTextureType_HEIGHT)) {
@@ -64,10 +67,6 @@ ns::Material::Material(aiMaterial* mtl, const std::string& texturesDirectory)
 		mtl->GetTexture(aiTextureType::aiTextureType_AMBIENT_OCCLUSION, 0, &path);
 		ambientOcclusionMap_ = addTexture(texturesDirectory, path.C_Str());
 	}
-	else if (mtl->GetTextureCount(aiTextureType::aiTextureType_EMISSIVE)) {
-		mtl->GetTexture(aiTextureType::aiTextureType_EMISSIVE, 0, &path);
-		ambientOcclusionMap_ = addTexture(texturesDirectory, path.C_Str());
-	}
 
 	if (!albedoMap_.has_value()) {
 		aiColor4D diffuse;
@@ -82,8 +81,7 @@ ns::Material::Material(const ofbx::Material* mtl, const std::string& texturesDir
 {
 	albedo_ = to_vec3(mtl->getDiffuseColor());
 	metallic_ = mtl->getReflectionFactor();
-
-	std::cout << "roughness = " << roughness_ << std::endl;
+	roughness_ = mtl->getShininessExponent();
 	name_ = mtl->name;
 
 	const ofbx::Texture* tex;
@@ -134,6 +132,7 @@ void ns::Material::bind(const ns::Shader& shader) const
 	shader.set("mat.hasAlbedoMap", albedoMap_.has_value());
 	shader.set("mat.hasRoughnessMap", roughnessMap_.has_value());
 	shader.set("mat.hasMetallicMap", metallicMap_.has_value());
+	shader.set("mat.hasEmissionMap", emissionMap_.has_value());
 	shader.set("mat.hasNormalMap", normalMap_.has_value());
 	shader.set("mat.hasAmbientOcclusionMap", ambientOcclusionMap_.has_value());
 
@@ -174,6 +173,18 @@ void ns::Material::bind(const ns::Shader& shader) const
 		shader.set("mat.metallic", metallic_);
 	}
 
+	if (emissionMap_.has_value()) {
+
+		shader.set<int>("mat.emissionMap", freeTextureSampler);
+
+		glActiveTexture(GL_TEXTURE0 + freeTextureSampler);
+		emissionMap_.value().bind();
+		freeTextureSampler++;
+	}
+	else {
+		shader.set("mat.emission", emission_);
+	}
+
 	if (normalMap_.has_value()) {
 		
 		shader.set<int>("mat.normalMap", freeTextureSampler);
@@ -198,6 +209,12 @@ const std::string& ns::Material::name() const
 	return name_;
 }
 
+void ns::Material::setEmissionConstant(const glm::vec3& emission)
+{
+	if (emission.x < 0 || emission.y < 0 || emission.z < 0) return;
+	emission_ = emission;
+}
+
 void ns::Material::setRoughnessConstant(float roughness)
 {
 	roughness_ = std::max(.0f, roughness);
@@ -217,6 +234,11 @@ void ns::Material::setAlbedoColor(const glm::vec3& color)
 float ns::Material::roughness() const
 {
 	return roughness_;
+}
+
+glm::vec3 ns::Material::emission() const
+{
+	return emission_;
 }
 
 float ns::Material::metallic() const
@@ -247,6 +269,12 @@ void ns::Material::setMetallicTexture(const TextureView& texture)
 	metallicMap_ = texture;
 }
 
+void ns::Material::setEmissionTexture(const TextureView& texture)
+{
+	removeEmissionTexture();
+	emissionMap_ = texture;
+}
+
 void ns::Material::setNormalTexture(const TextureView& texture)
 {
 	removeNormalTexture();
@@ -274,6 +302,11 @@ void ns::Material::removeMetallicTexture()
 	if (metallicMap_.has_value()) removeTexture(metallicMap_.value());
 }
 
+void ns::Material::removeEmissionTexture()
+{
+	if (emissionMap_.has_value()) removeTexture(emissionMap_.value());
+}
+
 void ns::Material::removeNormalTexture()
 {
 	if (normalMap_.has_value()) removeTexture(normalMap_.value());
@@ -298,13 +331,13 @@ void ns::Material::describeMaterial(aiMaterial* mtl)
 	{
 		if (mtl->GetTextureCount(static_cast<aiTextureType>(i))) {
 			mtl->GetTexture(static_cast<aiTextureType>(i), 0, &path);
-			std::cout << mtl->GetName().C_Str() << " has a texture of type : " << i << " at : " << path.C_Str() << std::endl;
+			Debug::get() << mtl->GetName().C_Str() << " has a texture of type : " << i << " at : " << path.C_Str() << std::endl;
 		}
 	}
 
 	for (size_t i = 0; i < mtl->mNumProperties; i++)
 	{
-		std::cout << mtl->GetName().C_Str() << " has a property of type : " <<  mtl->mProperties[i]->mKey.C_Str() << std::endl;
+		Debug::get() << mtl->GetName().C_Str() << " has a property of type : " <<  mtl->mProperties[i]->mKey.C_Str() << std::endl;
 	}
 }
 
@@ -349,42 +382,42 @@ void ns::Material::displayTextures(const ofbx::Material* mtl)
 	tex = mtl->getTexture(ofbx::Texture::TextureType::DIFFUSE);
 	if (tex) {
 		tex->getFileName().toString(buffer);
-		std::cout << "texture  diffuse : " << buffer << std::endl;
+		Debug::get() << "texture  diffuse : " << buffer << std::endl;
 	}
 
 	tex = mtl->getTexture(ofbx::Texture::TextureType::SPECULAR);
 	if (tex) {
 		tex->getFileName().toString(buffer);
-		std::cout << "texture specular : " << buffer << std::endl;
+		Debug::get() << "texture specular : " << buffer << std::endl;
 	}
 
 	tex = mtl->getTexture(ofbx::Texture::TextureType::SHININESS);
 	if (tex) {
 		tex->getFileName().toString(buffer);
-		std::cout << "texture  SHININESS : " << buffer << std::endl;
+		Debug::get() << "texture  SHININESS : " << buffer << std::endl;
 	}
 
 	tex = mtl->getTexture(ofbx::Texture::TextureType::NORMAL);
 	if (tex) {
 		tex->getFileName().toString(buffer);
-		std::cout << "texture NORMAL  : " << buffer << std::endl;
+		Debug::get() << "texture NORMAL  : " << buffer << std::endl;
 	}
 
 	tex = mtl->getTexture(ofbx::Texture::TextureType::EMISSIVE);
 	if (tex) {
 		tex->getFileName().toString(buffer);
-		std::cout << "texture  EMISSIVE : " << buffer << std::endl;
+		Debug::get() << "texture  EMISSIVE : " << buffer << std::endl;
 	}
 
 	tex = mtl->getTexture(ofbx::Texture::TextureType::AMBIENT);
 	if (tex) {
 		tex->getFileName().toString(buffer);
-		std::cout << "texture AMBIENT  : " << buffer << std::endl;
+		Debug::get() << "texture AMBIENT  : " << buffer << std::endl;
 	}
 
 	tex = mtl->getTexture(ofbx::Texture::TextureType::REFLECTION);
 	if (tex) {
 		tex->getFileName().toString(buffer);
-		std::cout << "texture  REFLECTION : " << buffer << std::endl;
+		Debug::get() << "texture  REFLECTION : " << buffer << std::endl;
 	}
 }

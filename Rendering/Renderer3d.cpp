@@ -7,6 +7,8 @@
 #include <configNoisy.hpp>
 #include "BillboardRenderer.h"
 
+#include <Utils/DebugLayer.h>
+
 #define NS_IRRADIANCE_MAP_SAMPLER				28
 #define NS_PREFILTERED_ENVIRONMENT_MAP_SAMPLER	29
 #define NS_BRDF_LUT_MAP							30
@@ -20,27 +22,25 @@ ns::Renderer3d::Renderer3d(Window& window, Camera& camera, Scene& scene, const R
 	info_(info),
 	runTicks(true),
 	skyBox(cam_, 0)
-
 {
 	std::vector<ns::Shader::Define> defines{
 		{"MAX_DIR_LIGHTS", std::to_string(info_.directionalLightsMax), ns::Shader::Stage::Fragment},
 		{"MAX_POINT_LIGHTS", std::to_string(info_.pointLightsMax), ns::Shader::Stage::Fragment},
 		{"MAX_SPOT_LIGHTS", std::to_string(info_.spotLightsMax), ns::Shader::Stage::Fragment},
 	};
-	pbr_ = std::make_shared<ns::Shader>(NS_PATH"assets/shaders/renderer.vert", NS_PATH"assets/shaders/renderer.frag", nullptr, defines, true);
+	pbr_ = std::make_unique<ns::Shader>(NS_PATH"assets/shaders/main/renderer.vert", NS_PATH"assets/shaders/main/renderer.frag", nullptr, defines, true);
 
-	initPhysicallyBasedRenderingSystem();
-	launchTickThread();
+	initPhysicallyBasedRenderingSystem(info.environmentMap);
+	//launchTickThread();
 
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_MULTISAMPLE);
+	glDisable(GL_MULTISAMPLE);
 	//transparency
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	//avoid visible cube edges of the cubemaps 
 	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
-	glClearColor(.7f, 1, 1, 1.0);
+	glClearColor(0.f, 0.f, 0.f, 1.f);
 
 	skyBox.setCubeMapTexture(environmentMap_);
 }
@@ -51,10 +51,44 @@ ns::Renderer3d::~Renderer3d()
 	glDeleteTextures(1, &irradianceMap_);
 }
 
+void ns::Renderer3d::startRendering()
+{
+	postProcess->bind();
+	draw();
+}
+
+void ns::Renderer3d::finishRendering()
+{
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, postProcess->colorMap2());
+	glBindImageTexture(0, postProcess->colorMap2(), 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA16F);
+
+	gaussianBlur->use();
+
+
+	const int resx = win_.size().x + 32 - win_.size().x % 32, resy = win_.size().y + 32 - win_.size().y % 32;
+	for (uint8_t i = 0; i < 7; i++)
+	{
+		gaussianBlur->set("horizontal", i % 2);
+		glDispatchCompute(resx / 32, resy / 32, 1);
+		glMemoryBarrier(GL_ALL_BARRIER_BITS);
+	}
+
+	postProcess->startProcessing();
+
+	//final rendering on a quad
+	glDisable(GL_DEPTH_TEST);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glClear(GL_COLOR_BUFFER_BIT);
+	glViewport(0, 0, win_.width(), win_.height());
+
+	postProcess->draw();
+}
+
 void ns::Renderer3d::draw()
 {
 	cam_.calculateMatrix(win_);
-	skyBox.draw();
+	//skyBox.draw();
 
 	scene_.sendLights(*pbr_);
 
@@ -78,12 +112,12 @@ void ns::Renderer3d::setScene(Scene& scene)
 	scene_ = scene;
 }
 
-void ns::Renderer3d::initPhysicallyBasedRenderingSystem()
+void ns::Renderer3d::initPhysicallyBasedRenderingSystem(const std::string& envHdrMapPath)
 {
 	createCube();
 	createPlaneMesh();
 
-	loadEnvironmentMap("resources/sky.hdr", 1024);
+	loadEnvironmentMap(envHdrMapPath.c_str(), 1024);
 
 	updateIrradianceMap();
 	updatePreFilteredEnvironmentMap();
@@ -94,6 +128,14 @@ void ns::Renderer3d::initPhysicallyBasedRenderingSystem()
 	glDeleteVertexArrays(1, &cube_);
 	glDeleteBuffers(1, &planeBuffer_);
 	glDeleteVertexArrays(1, &plane_);
+
+	PostProcessingLayerInfo info;
+	info.samples = 2;
+	info.ComputeShaderNumWorkGroupX = 32;
+	info.ComputeShaderNumWorkGroupY = 32;
+
+	postProcess = std::make_unique<ns::PostProcessingLayer>(win_, info, NS_PATH"assets/shaders/compute/postProcess.comp");
+	gaussianBlur = std::make_unique<ns::Shader>(NS_PATH"assets/shaders/compute/gaussianBlur.comp");
 }
 
 void ns::Renderer3d::launchTickThread()
@@ -117,7 +159,7 @@ void ns::Renderer3d::tickThread(ns::Renderer3d* renderer)
 			renderer->guardian_->lock();
 		}
 		catch (std::system_error) {
-			std::cout << "remaking the recursive_mutex !\n";
+			Debug::get() << "remaking the recursive_mutex !\n";
 			renderer->guardian_ = std::make_shared<std::recursive_mutex>();
 			continue;
 		}
@@ -179,7 +221,7 @@ void ns::Renderer3d::loadEnvironmentMap(const char* path, int res)
 	}
 	else
 	{
-		std::cerr << "CubeMap error : can't load file : " << path << std::endl;
+		Debug::get() << "CubeMap error : can't load file : " << path << std::endl;
 		return;
 	}
 

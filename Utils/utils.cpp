@@ -44,3 +44,8 @@ glm::vec4 ns::to_vec4(const ofbx::Vec4& vec)
 {
 	return { vec.x, vec.y, vec.z, vec.w };
 }
+
+void ns::to_mat4(glm::mat4& output, const aiMatrix4x4* mat)
+{
+	for (char i = 0; i < 4; i++) for (char j = 0; j < 4; j++) output[i][j] = (*mat)[i][j];
+}

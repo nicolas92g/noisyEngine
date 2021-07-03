@@ -6,6 +6,8 @@
 #include <KHR/khrplatform.h>
 #include <iostream>
 
+#include <Utils/DebugLayer.h>
+
 
 #ifdef RUNTIME_SHADER_RECOMPILATION
 std::list<ns::Shader*> ns::Shader::shaders;
@@ -17,10 +19,11 @@ ns::Shader::Shader(const char* vertexPath, const char* fragmentPath, const char*
 	loadShaderFrom(vertexPath, fragmentPath, geometryPath, defines);
 
 #	ifdef RUNTIME_SHADER_RECOMPILATION
+	this->reloadable = reLoadable;
 	if (reLoadable) {
 		shaders.push_back(this);
 		filepaths = { vertexPath , fragmentPath , geometryPath };
-		this->reloadable = reLoadable;
+		this->defines = defines;
 	}
 #	endif // RUNTIME_SHADER_RECOMPILATION
 }
@@ -30,9 +33,11 @@ ns::Shader::Shader(const char* computeShaderFilePath, const std::vector<Define>&
 	loadComputeShaderFrom(computeShaderFilePath, defines);
 
 #	ifdef RUNTIME_SHADER_RECOMPILATION
+	this->reloadable = reLoadable;
 	if (reLoadable) {
 		shaders.push_back(this);
 		filepaths = { computeShaderFilePath };
+		this->defines = defines;
 	}
 #	endif // RUNTIME_SHADER_RECOMPILATION
 }
@@ -72,19 +77,19 @@ void ns::Shader::update(const Window& window)
 
 	
 	if (window.key(RECOMPILATION_KEY) and !recompileKeyState) {
-		std::cout << "reloading shaders";
+		Debug::get() << "reloading shaders";
 		for (Shader* shader : shaders) {
 			if (shader->filepaths.size() > 1)
 			{
-				shader->loadShaderFrom(shader->filepaths[0], shader->filepaths[1], shader->filepaths[2], {});
+				shader->loadShaderFrom(shader->filepaths[0], shader->filepaths[1], shader->filepaths[2], shader->defines);
 			}
 			else 
 			{
-				shader->loadComputeShaderFrom(shader->filepaths[0], {});
+				shader->loadComputeShaderFrom(shader->filepaths[0], shader->defines);
 			}
-			std::cout << ".";
+			Debug::get() << ".";
 		}
-		std::cout << std::endl;
+		Debug::get() << std::endl;
 	}
 
 	recompileKeyState = window.key(RECOMPILATION_KEY);
@@ -96,18 +101,18 @@ void ns::Shader::loadShaderFrom(const char* vertexPath, const char* fragmentPath
 {
 	std::string vertex;
 	if (!filepathToString(vertex, vertexPath)) {
-		std::cout << "error : can't find vertex shader's file at path :\n" << vertexPath << "\n";
+		Debug::get() << "error : can't find vertex shader's file at path :\n" << vertexPath << "\n";
 	}
 
 
 	std::string fragment;
 	if (!filepathToString(fragment, fragmentPath)) {
-		std::cout << "error : can't find fragment shader's file at path :\n" << fragmentPath << "\n";
+		Debug::get() << "error : can't find fragment shader's file at path :\n" << fragmentPath << "\n";
 	}
 
 	std::string geometry;
 	if (geometryPath != nullptr and strlen(geometryPath) > 1 and !filepathToString(geometry, geometryPath)) {
-		std::cout << "error : can't find geometry shader's file at path :\n" << geometryPath << "\n";
+		Debug::get() << "error : can't find geometry shader's file at path :\n" << geometryPath << "\n";
 	}
 
 	setDefines(vertex, defines, ns::Shader::Stage::Vertex);
@@ -121,8 +126,10 @@ void ns::Shader::loadComputeShaderFrom(const char* computePath, const std::vecto
 {
 	std::string computeText;
 	if (!filepathToString(computeText, computePath)) {
-		std::cout << "error : can't find compute shader's file at path :\n" << computePath << "\n";
+		Debug::get() << "error : can't find compute shader's file at path :\n" << computePath << "\n";
 	}
+
+	setDefines(computeText, defines, ns::Shader::Stage::Compute);
 
 	const char* text = computeText.c_str();
 
@@ -135,7 +142,7 @@ void ns::Shader::loadComputeShaderFrom(const char* computePath, const std::vecto
 	glGetShaderiv(computeShader, GL_COMPILE_STATUS, vertexCompilationSuccess);
 	if (!*vertexCompilationSuccess) {
 		glGetShaderInfoLog(computeShader, 512, NULL, errorLog);
-		std::cerr << "ERROR in the compute shader \n" << errorLog << '\n';
+		Debug::get() << "ERROR in the compute shader \n" << errorLog << '\n';
 	}
 
 	id = glCreateProgram();
@@ -146,7 +153,7 @@ void ns::Shader::loadComputeShaderFrom(const char* computePath, const std::vecto
 	glGetProgramiv(id, GL_LINK_STATUS, &linkSuccess);
 	if (!linkSuccess) {
 		glGetProgramInfoLog(id, 512, NULL, errorLog);
-		std::cerr << "ERROR while linking compute shader \n" << errorLog << '\n';
+		Debug::get() << "ERROR while linking compute shader \n" << errorLog << '\n';
 	}
 }
 
@@ -193,7 +200,7 @@ void ns::Shader::compileShader(const char* vertex, const char* fragment, const c
 	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, vertexCompilationSuccess);
 	if (!*vertexCompilationSuccess) {
 		glGetShaderInfoLog(vertexShader, 512, NULL, errorLog);
-		std::cerr << "ERROR in the vertex shader \n" << errorLog << '\n';
+		Debug::get() << "ERROR in the vertex shader \n" << errorLog << '\n';
 	}
 
 	uint32_t geometryShader;
@@ -210,7 +217,7 @@ void ns::Shader::compileShader(const char* vertex, const char* fragment, const c
 		glGetShaderiv(geometryShader, GL_COMPILE_STATUS, geometryCompilationSuccess);
 		if (!*geometryCompilationSuccess) {
 			glGetShaderInfoLog(geometryShader, 512, NULL, errorLog);
-			std::cerr << "ERROR in the geometry shader \n" << errorLog << '\n';
+			Debug::get() << "ERROR in the geometry shader \n" << errorLog << '\n';
 		}
 	}
 
@@ -223,7 +230,7 @@ void ns::Shader::compileShader(const char* vertex, const char* fragment, const c
 	glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, fragmentCompilationSuccess);
 	if (!*fragmentCompilationSuccess) {
 		glGetShaderInfoLog(fragmentShader, 512, NULL, errorLog);
-		std::cerr << "ERROR in the fragment shader \n" << errorLog << '\n';
+		Debug::get() << "ERROR in the fragment shader \n" << errorLog << '\n';
 	}
 	//create a programm object
 	id = glCreateProgram();
@@ -237,7 +244,7 @@ void ns::Shader::compileShader(const char* vertex, const char* fragment, const c
 	glGetProgramiv(id, GL_LINK_STATUS, &linkSuccess);
 	if (!linkSuccess) {
 		glGetProgramInfoLog(id, 512, NULL, errorLog);
-		std::cerr << "ERROR while linking shaders \n" << errorLog << '\n';
+		Debug::get() << "ERROR while linking shaders \n" << errorLog << '\n';
 	}
 	use();
 	glDeleteShader(vertexShader);

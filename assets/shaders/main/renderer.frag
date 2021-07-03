@@ -5,7 +5,8 @@
 #define MAX_POINT_LIGHTS 50
 #define MAX_SPOT_LIGHTS 50
 
-out vec4 outColor;
+layout(location = 0) out vec4 outColor;
+layout(location = 1) out vec4 BrightColor;
 
 in vec2 uv;
 in vec3 outNormal;
@@ -43,6 +44,7 @@ uniform struct Material{
 	bool hasAlbedoMap;
 	bool hasRoughnessMap;
 	bool hasMetallicMap;
+	bool hasEmissionMap;
 	bool hasNormalMap;
 	bool hasAmbientOcclusionMap;
 
@@ -55,6 +57,9 @@ uniform struct Material{
 	sampler2D metallicMap;
 	float metallic;
 
+    sampler2D emissionMap;
+    vec3 emission;
+
 	sampler2D normalMap;
 
 	sampler2D ambientOcclusionMap;
@@ -64,6 +69,7 @@ struct PixelMaterial{
 	vec3 albedo;
 	float roughness;
 	float metallic;
+    vec3 emission;
 	vec3 normal;
 	float ao;
     float alpha;
@@ -86,7 +92,6 @@ vec3 CalcDirLight(DirLight light, vec3 F0, vec3 viewDir, vec4 lightFragmentPosit
 vec3 CalcPointLight(PointLight light, vec3 F0, vec3 fragPos, vec3 viewDir, PixelMaterial pbr);
 vec3 CalcSpotLight(SpotLight spotLight, vec3 F0, vec3 fragPos, vec3 viewDir, PixelMaterial pbr);
 vec3 calcNormalMapping();
-vec3 calcFlatNormalMapping();
 
 void main(){    
     PixelMaterial pbr = getMaterial();
@@ -130,14 +135,16 @@ void main(){
 
     vec3 ambient = (kD * diffuseValue + specular) * pbr.ao;
 
-    
-    vec3 color = (ambient) + Lo;
-    color = color / (color + vec3(1.0));
-    color = pow(color.rgb, vec3(1.0/2.2));
-    outColor = vec4(vec3(color), pbr.alpha);
-    
-    //outColor = texture(mat.normalMap, uv);
-    //outColor.rgb = vec3(pbr.normal);
+    vec3 color = ambient + Lo + pbr.emission;
+    outColor = vec4(vec3(color), pbr.alpha);//hdr output
+
+    //Bright Color calculation
+    float brightness = dot(outColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+    if(brightness > 1){
+        BrightColor = vec4(outColor.rgb * min(brightness - 0.97, 1), 1.0);
+    }
+    else
+        BrightColor = vec4(0.0, 0.0, 0.0, 1.0);
 }
 
 vec3 gammaCorrect(vec3 value){
@@ -178,12 +185,20 @@ PixelMaterial getMaterial(){
         ret.metallic = mat.metallic;
     }
 
+    ///emission
+    if(mat.hasEmissionMap){
+        ret.emission = texture(mat.emissionMap, uv).rgb;
+    }
+    else{
+        ret.emission = mat.emission;
+    }
+
     //normal
     if(mat.hasNormalMap){
         ret.normal = calcNormalMapping();
     }
     else{
-        ret.normal = calcFlatNormalMapping();
+        ret.normal = outNormal;
     }
 
     //ambientOcclusionMap
@@ -191,7 +206,7 @@ PixelMaterial getMaterial(){
         ret.ao = texture(mat.ambientOcclusionMap, uv).r;
     }
     else{
-        ret.ao = 1.0;
+        ret.ao = 1;
     }
     return ret;
 }
@@ -216,12 +231,12 @@ vec3 CalcDirLight(DirLight light, vec3 F0, vec3 viewDir, vec4 lightFragmentPosit
     kD *= 1.0 - pbr.metallic;	  
     
     vec3 numerator    = NDF * G * F;
-    float denominator = 4.0 * max(dot(pbr.normal, viewDir), 0.0) * max(dot(pbr.normal, LightDir), 0.0);
+    float denominator = 4.0 * max(dot(outNormal, viewDir), 0.1) * max(dot(pbr.normal, LightDir), 0.0);
     vec3 specular     = numerator / max(denominator, 0.001);
         
     float NdotL = max(dot(pbr.normal, LightDir), 0.0);  
     
-    float shadow = 0;//calcShadow(lightFragPos, pbr.normal, LightDir);
+    float shadow = 0.1;//calcShadow(lightFragPos, pbr.normal, LightDir);
 
     return (1.0 - shadow) * ((kD * pbr.albedo / PI + specular) * radiance * NdotL);
 }
@@ -243,7 +258,7 @@ vec3 CalcPointLight(PointLight light, vec3 F0, vec3 fragPos, vec3 viewDir, Pixel
         const vec3 kD = (vec3(1.0) - kS) * (1.0 - pbr.metallic);
         
         const vec3 numerator    = NDF * G * F;
-        const float denominator = 4.0 * max(dot(pbr.normal, viewDir), 0.0) * max(dot(pbr.normal, L), 0.0);
+        const float denominator = 4.0 * max(dot(outNormal, viewDir), 0.1) * max(dot(pbr.normal, L), 0.0);
         const vec3 specularColor = numerator / max(denominator, 0.001) * attenuation;
             
         // add to outgoing radiance Lo
@@ -253,7 +268,7 @@ vec3 CalcPointLight(PointLight light, vec3 F0, vec3 fragPos, vec3 viewDir, Pixel
 
 vec3 CalcSpotLight(SpotLight spotLight, vec3 F0, vec3 fragPos, vec3 viewDir, PixelMaterial pbr){
     //create a point light with the spot values
-    PointLight spot; spot.position = spotLight.position; spot.color = spotLight.color; 
+    PointLight spot; spot.position = spotLight.position; spot.color = spotLight.color;
     spot.attenuation = spotLight.attenuation;
     //calculate this point light 
     const vec3 pointLight = CalcPointLight(spot, F0, fragPos, viewDir, pbr);
@@ -272,10 +287,6 @@ vec3 CalcSpotLight(SpotLight spotLight, vec3 F0, vec3 fragPos, vec3 viewDir, Pix
 
 vec3 calcNormalMapping(){
     return normalize(TBN * ((texture(mat.normalMap, uv).rgb) * 2.0 - 1.0));
-}
-
-vec3 calcFlatNormalMapping(){   
-    return normalize(TBN * vec3(0, 0, 1));
 }
 
 //----------------------------------------------

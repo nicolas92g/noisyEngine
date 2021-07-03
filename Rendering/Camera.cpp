@@ -55,7 +55,7 @@ void ns::Camera::classicMouseControls(Window& win, double mouseSensivity)
 	disableMouseKey = win.key(GLFW_KEY_TAB);
 	//mouse control
 	
-	if (!disableMouse) {
+	if (!disableMouse and win.isFocused()) {
 		glm::vec<2, double> cursorPos = win.getCursorPos();
 
 		this->setYaw((float)yaw_ - float(mouseSensivity * float(win.width() / 2 - cursorPos.x)));

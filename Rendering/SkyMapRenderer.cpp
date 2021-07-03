@@ -8,7 +8,7 @@
 ns::SkyMapRenderer::SkyMapRenderer(Camera& cam, unsigned cubeMapTexture)
     :
     cam_(cam),
-    shader_(NS_PATH"assets/shaders/skyBox.vert", NS_PATH"assets/shaders/skyBox.frag"),
+    shader_(NS_PATH"assets/shaders/main/skyBox.vert", NS_PATH"assets/shaders/main/skyBox.frag"),
     cubeMapTexture_(cubeMapTexture)
 {
     //cube vertices positions

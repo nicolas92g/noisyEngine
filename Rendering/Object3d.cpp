@@ -1,7 +1,7 @@
 #include "Object3d.h"
 
 #include <glm/gtx/transform.hpp>
-#include <iostream>
+#include <Utils/DebugLayer.h>
 
 ns::Object3d::Object3d(const glm::vec3& position)
 	:
@@ -35,7 +35,7 @@ void ns::Object3d::setPosition(const glm::vec3& position)
 void ns::Object3d::setParent(Object3d* parent)
 {
 	if (parent == this) {
-		std::cerr << "error : try to parent an object with himself !\n";
+		Debug::get() << "error : try to parent an object with himself !\n";
 		return;
 	}
 	parent_ = parent;

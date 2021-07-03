@@ -11,24 +11,13 @@
 namespace ns {
 
 	struct Vertex {
-
-		Vertex() :
-			position(glm::vec3(0)),
-			normal(glm::vec3(0)),
-			uv(glm::vec2(0)),
-			tangent(glm::vec3(0)),
-			bitangent(glm::vec3(0))
-		{}
-
-		Vertex(const glm::vec3& pos) :
-			position(pos),
-			normal(glm::vec3(0)),
-			uv(glm::vec2(0)),
-			tangent(glm::vec3(0)),
-			bitangent(glm::vec3(0))
-		{}
-
-		Vertex(const glm::vec3& pos, const glm::vec3& normal, const glm::vec2& uv, const glm::vec3& tangent, const glm::vec3& bi) :
+		Vertex(
+			const glm::vec3& pos = glm::vec3(0.f), 
+			const glm::vec3& normal = glm::vec3(0.f), 
+			const glm::vec2& uv = glm::vec2(0.f), 
+			const glm::vec3& tangent = glm::vec3(0.f), 
+			const glm::vec3& bi = glm::vec3(0.f)) 
+			:
 			position(pos),
 			normal(normal),
 			uv(uv),
@@ -42,9 +31,31 @@ namespace ns {
 		glm::vec3 tangent;
 		glm::vec3 bitangent;
 
-	public:
 		void genTangent();
 		void genBitangent();
+	};
+
+	struct VertexBoneData
+	{
+		VertexBoneData() :
+			ids(glm::ivec4(0)),
+			weights(0.f)
+		{}
+
+		void addBone(unsigned id, float weight) 
+		{
+			for (uint8_t i = 0; i < 4; i++)
+			{
+				float* const w = &weights.x + i;
+				if (*w == 0.f) {
+					*w = weight;
+					*(&ids.x + i) = static_cast<int>(id);
+				}
+			}
+		}
+
+		glm::ivec4 ids;
+		glm::vec4 weights;
 	};
 
 	struct MeshConfigInfo {
@@ -53,30 +64,41 @@ namespace ns {
 			supportNormalMapping(true),
 			primitive(GL_TRIANGLES),
 			indexType(GL_UNSIGNED_INT),
-			hasBitangents(true)
+			hasBitangents(true),
+			hasAnimations(false)
 		{}
+
 		std::string name;
 		bool supportNormalMapping;
 		bool hasBitangents;
 		GLuint primitive;
 		GLuint indexType;
+		bool hasAnimations;
 	};
 
 	class Mesh : public Drawable
 	{
 	public:
-		Mesh(const std::vector<Vertex>& vertices, 
+		Mesh(const std::vector<Vertex>& vertices,
 			const std::vector<unsigned int>& indices,
 			const ns::Material& material, 
 			const MeshConfigInfo& info = MeshConfigInfo());
+
+		Mesh(const std::vector<Vertex>& vertices,
+			const std::vector<VertexBoneData>& animData,
+			const std::vector<unsigned int>& indices,
+			const ns::Material& material,
+			const MeshConfigInfo& info = MeshConfigInfo());
+
 		~Mesh();
 
 		virtual void draw(const Shader& shader) const override;
 
 	protected:
-		unsigned int vertexArrayObject_;
-		unsigned int vertexBufferObject_;
-		unsigned int indexBufferObject_;
+		unsigned vertexArrayObject_;
+		unsigned vertexBufferObject_;
+		unsigned bonesBufferObject_;
+		unsigned indexBufferObject_;
 
 		const Material& material_;
 		int numberOfVertices_;

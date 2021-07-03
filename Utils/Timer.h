@@ -4,11 +4,17 @@
 #include <iostream>
 #include <array>
 
+#define TIMER(call) \
+					Timer t;\
+					call;\
+					t.stop();\
+						
+
 namespace ns {
 	class Timer
 	{
 	public:
-		Timer(const std::string& name);
+		Timer(const std::string& name = "timer");
 		~Timer();
 		void stop();
 		void abort();

@@ -10,6 +10,8 @@
 #include <vector>
 #include <iostream>
 
+#include <Utils/DebugLayer.h>
+
 //#define DISPLAY_MATERIALS_CONSTANTS
 //#define DISPLAY_MATERIAL_TEXTURES
 
@@ -1956,7 +1958,7 @@ namespace ofbx
 
 				char buffer[200];
 				prop->first_property->value.toString(buffer);
-				std::cout << "material constant : " << buffer << " = " << 
+				Debug::get() << "material constant : " << buffer << " = " << 
 					prop->getProperty(4)->getValue().toDouble() << ", "
 					<< prop->getProperty(4)->getValue().toDouble() << ", "
 					<< prop->getProperty(4)->getValue().toDouble() << std::endl;
@@ -3275,7 +3277,7 @@ namespace ofbx
 
 				char buffer[200];
 				con.property.toString(buffer);
-				std::cout << "Material property detected : " << buffer << std::endl;
+				Debug::get() << "Material property detected : " << buffer << std::endl;
 
 #				endif
 

@@ -1,5 +1,7 @@
 #include "Timer.h"
 
+#include <Utils/DebugLayer.h>
+
 using namespace std::chrono;
 using namespace std::chrono_literals;
 
@@ -24,7 +26,7 @@ void ns::Timer::stop()
 
 	if (hasBeenStoped) return;
 	
-	std::cout << name << +" took " + std::to_string((double)duration.count() * 1e-6) + " ms\n";
+	Debug::get() << name << " took " + std::to_string((double)duration.count() * 1e-6) + " ms\n";
 	hasBeenStoped = true;
 }
 
@@ -58,7 +60,7 @@ ns::performanceBench::~performanceBench()
 
 	if (!number) return;
 
-	std::cout << "average framerates is : " << sum / number << " fps\n";
+	Debug::get() << "average framerates is : " << sum / number << " fps\n";
 }
 
 void ns::performanceBench::recordFrame()

@@ -23,7 +23,8 @@ namespace ns {
 		{
 			Vertex,
 			Fragment,
-			Geometry
+			Geometry,
+			Compute
 		};
 		struct Define {
 			std::string name;
@@ -67,6 +68,7 @@ namespace ns {
 
 #		ifdef RUNTIME_SHADER_RECOMPILATION
 		std::vector<const char*> filepaths;
+		std::vector<Define> defines;
 		static std::list<Shader*> shaders;
 		bool reloadable;
 #		endif

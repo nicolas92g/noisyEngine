@@ -2,12 +2,26 @@
 #include "Mesh.h"
 
 #include <assimp/scene.h>
+
 #include <memory>
+#include <map>
+
 #include <ofbx.h>
 
 #include "Light.h"
 
 namespace ns {
+	struct BoneInfo 
+	{
+		BoneInfo() :
+			offset(0),
+			transformation(0)
+		{}
+
+		glm::mat4 offset;
+		glm::mat4 transformation;
+	};
+
 	class Model : public Drawable
 	{
 		
@@ -29,21 +43,26 @@ namespace ns {
 		std::string dir_;
 
 		//mesh content
-		std::vector<std::shared_ptr<Mesh>> meshes_;
-		std::vector<std::shared_ptr<ns::Material>> materials_;
+		std::vector<std::unique_ptr<Mesh>> meshes_;
+		std::vector<std::unique_ptr<ns::Material>> materials_;
 		std::vector<std::shared_ptr<LightBase_>> lights_;
 
-		//loading with assimp
-	protected:
+		//animation content
+		unsigned numBones_;
+		std::map<std::string, unsigned> boneMapping_;
+		std::vector<BoneInfo> boneInfo_;
+		
+	protected:	//loading with assimp
 		bool importWithAssimp();
 		
-		void readNodesFromNode(aiNode* node, const aiScene* scene);
-		void createMeshFromNode(aiMesh* mesh, const aiScene* scene);
+		void readNodesFromAssimp(aiNode* node, const aiScene* scene);
+		void createMeshFromAssimp(aiMesh* mesh, const aiScene* scene);
 
-		void getLights(const aiScene* scene);
+		void getLightsFromAssimp(const aiScene* scene);
+		void loadBonesFromAssimp(const aiScene& scene, const aiMesh& mesh, std::vector<VertexBoneData>& bones);
 
-		//loading with OpenFBX
-	protected:
+		
+	protected:	//loading with OpenFBX
 		bool importWithOpenFBX();
 
 		void createMeshFromFBX(const ofbx::Mesh& mesh, ofbx::IScene& scene);

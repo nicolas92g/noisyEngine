@@ -14,20 +14,24 @@
 
 //ns
 #include <Utils/utils.h>
+#include <Utils/DebugLayer.h>
 
 
 ns::Model::Model(const std::string& modelFilePath)
+	:
+	numBones_(0)
 {
 	filepath_ = modelFilePath;
 	dir_ = filepath_.substr(0, filepath_.find_last_of('/'));
 
 	const std::string extension = modelFilePath.substr(modelFilePath.find_last_of('.') + 1);
 
-	//importWithAssimp(); return;
-	if (extension == "fbx") {
+	importWithAssimp(); return;
+
+	if (extension == "fbx")
 		importWithOpenFBX();
-	}
-	else importWithAssimp();
+	else 
+		importWithAssimp();
 }
 
 ns::Model::~Model(){} 
@@ -53,32 +57,43 @@ bool ns::Model::importWithAssimp()
 	);
 
 	if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
-		std::cerr << "error while loading the file : " << filepath_ << " with assimp\n"
+		Debug::get() << "error while loading the file : " << filepath_ << " with assimp\n"
 			<< importer.GetErrorString() << std::endl;
 		return false;
 	}
 
-	readNodesFromNode(scene->mRootNode, scene);
+	readNodesFromAssimp(scene->mRootNode, scene);
+
 	return true;
 }
 
 bool ns::Model::importWithOpenFBX()
 {
 	using namespace ofbx;
-
-	//open the file
-	FILE* fp;
-	fopen_s(&fp, filepath_.c_str(), "rb");
-	if (!fp) return false;
-
-	//determine the size of the file
-	fseek(fp, 0, SEEK_END);
-	long file_size = ftell(fp);
-	fseek(fp, 0, SEEK_SET);
 	
-	//buffer that store the all file content
+	//open fbx file as a binary file
+	std::ifstream file(filepath_, std::ios::binary | std::ios::in);
+	
+	if (!file.is_open()) {
+		Debug::get() << "failed to open FBX file : " << filepath_ << std::endl;
+		return false;
+	}
+
+	//determine size of the file
+	file.seekg(0, file.end);
+	size_t file_size = file.tellg();
+	
+	//set cursor at the begining
+	file.seekg(0, file.beg);
+
+	//alloc file content buffer
 	u8* content = new u8[file_size];
-	fread(content, 1, file_size, fp);
+	
+	//read file
+	for (size_t i = 0; i < file_size; i++)
+	{
+		content[i] = file.get();
+	}
 
 	//load the fbx scene
 	IScene& scene = *load(content, file_size, (u64)LoadFlags::TRIANGULATE);
@@ -88,7 +103,7 @@ bool ns::Model::importWithOpenFBX()
 
 	//check that loading was successful
 	if (!&scene) {
-		std::cerr << "failed to read file : "<< filepath_ << " with OpenFBX :\n" << getError() << std::endl;
+		Debug::get() << "failed to read file : "<< filepath_ << " with OpenFBX :\n" << getError() << std::endl;
 		return false;
 	}
 
@@ -98,6 +113,13 @@ bool ns::Model::importWithOpenFBX()
 		createMeshFromFBX(*scene.getMesh(i), scene);
 	}
 
+	
+	for (size_t i = 0; i < scene.getAnimationStackCount(); i++)
+	{
+		const AnimationStack& animStack = *scene.getAnimationStack(i);
+	}
+
+	scene.destroy();
 	return true;
 }
 
@@ -116,7 +138,7 @@ void ns::Model::createMeshFromFBX(const ofbx::Mesh& mesh, ofbx::IScene& scene)
 	info.indexType = pickIndexType(mesh.getGeometry()->getVertexCount());
 
 	const Geometry& geo = *mesh.getGeometry();
-	//std::cout << "mesh " << mesh.name << " has " << geo.getIndexCount() << " indices and " << geo.getVertexCount() << " vertices\n";
+	//Debug::get() << "mesh " << mesh.name << " has " << geo.getIndexCount() << " indices and " << geo.getVertexCount() << " vertices\n";
 
 	vertices.resize(mesh.getGeometry()->getVertexCount());
 	for (size_t i = 0; i < vertices.size(); i++)
@@ -126,7 +148,7 @@ void ns::Model::createMeshFromFBX(const ofbx::Mesh& mesh, ofbx::IScene& scene)
 		v.position = {geo.getVertices()[i].x , geo.getVertices()[i].y, geo.getVertices()[i].z };
 
 		//fill normals
-		if (geo.getNormals() == nullptr) { std::cerr << "mesh " << info.name << " doesn't have normals !\n";}
+		if (geo.getNormals() == nullptr) { Debug::get() << "mesh " << info.name << " doesn't have normals !\n";}
 		else v.normal = { geo.getNormals()[i].x, geo.getNormals()[i].y, geo.getNormals()[i].z };
 
 		//fill uvs
@@ -153,24 +175,24 @@ void ns::Model::createMeshFromFBX(const ofbx::Mesh& mesh, ofbx::IScene& scene)
 
 	//fill material
 	if (mesh.getMaterial(0) != nullptr) {
-		materials_.push_back(std::make_shared<Material>(mesh.getMaterial(0), dir_));
+		materials_.push_back(std::make_unique<Material>(mesh.getMaterial(0), dir_));
 	}
 
-	meshes_.push_back(std::make_shared<ns::Mesh>(vertices, indices, *materials_[materials_.size() - 1], info));
+	meshes_.push_back(std::make_unique<ns::Mesh>(vertices, indices, *materials_[materials_.size() - 1], info));
 }
 
-void ns::Model::readNodesFromNode(aiNode* node, const aiScene* scene)
+void ns::Model::readNodesFromAssimp(aiNode* node, const aiScene* scene)
 {
 	//read this node
 	for (size_t i = 0; i < node->mNumMeshes; i++)
-		createMeshFromNode(scene->mMeshes[node->mMeshes[i]], scene);
+		createMeshFromAssimp(scene->mMeshes[node->mMeshes[i]], scene);
 
 	//read all the childs recursively
 	for (size_t i = 0; i < node->mNumChildren; i++)
-		readNodesFromNode(node->mChildren[i], scene);
+		readNodesFromAssimp(node->mChildren[i], scene);
 }
 
-void ns::Model::createMeshFromNode(aiMesh* mesh, const aiScene* scene)
+void ns::Model::createMeshFromAssimp(aiMesh* mesh, const aiScene* scene)
 {
 	std::vector<ns::Vertex> vertices;
 	std::vector<unsigned int> indices;
@@ -224,13 +246,13 @@ void ns::Model::createMeshFromNode(aiMesh* mesh, const aiScene* scene)
 	//fill material
 	if (mesh->mMaterialIndex >= 0) {
 		aiMaterial* mtl = scene->mMaterials[mesh->mMaterialIndex];
-		materials_.push_back(std::make_shared<ns::Material>(mtl, dir_));
+		materials_.push_back(std::make_unique<ns::Material>(mtl, dir_));
 	}
 
-	meshes_.push_back(std::make_shared<ns::Mesh>(vertices, indices, *materials_[materials_.size() - 1].get(), info));
+	meshes_.push_back(std::make_unique<ns::Mesh>(vertices, indices, *materials_[materials_.size() - 1].get(), info));
 }
 
-void ns::Model::getLights(const aiScene* scene)
+void ns::Model::getLightsFromAssimp(const aiScene* scene)
 {
 	for (size_t i = 0; i < scene->mNumLights; i++)
 	{
@@ -257,6 +279,42 @@ void ns::Model::getLights(const aiScene* scene)
 	}	
 }
 
+void ns::Model::loadBonesFromAssimp(const aiScene& scene, const aiMesh& mesh, std::vector<VertexBoneData>& bones)
+{
+	bones.resize(mesh.mNumVertices);
+
+	for (unsigned i = 0; i < mesh.mNumBones; i++)
+	{
+		const aiBone& bone = *mesh.mBones[i];
+		const std::string name(bone.mName.C_Str());
+
+		unsigned boneId(0);
+
+		if (boneMapping_.find(name) == boneMapping_.end()) {
+			boneId = numBones_;
+			numBones_++;
+
+			BoneInfo i;
+			to_mat4(i.offset, &bone.mOffsetMatrix);
+			boneInfo_.push_back(i);
+
+			boneMapping_[name] = boneId;
+		}
+		else {
+			boneId = boneMapping_[name];
+		}
+
+		for (unsigned i = 0; i < bone.mNumWeights; i++)
+		{
+			unsigned VertexId = bone.mWeights[i].mVertexId;
+
+			bones[VertexId].addBone(boneId, bone.mWeights[i].mWeight);
+		}
+
+		
+	}
+}
+
 GLuint ns::Model::pickIndexType(size_t numberOfPositions) const
 {
 	if (numberOfPositions <= std::numeric_limits<unsigned char>::max()) {
@@ -272,10 +330,10 @@ GLuint ns::Model::pickIndexType(size_t numberOfPositions) const
 
 void ns::Model::describe() const
 {
-	std::cout << "model : " << filepath_ <<
+	Debug::get() << "model : " << filepath_ <<
 		"\n num meshes = " << meshes_.size() << "\n";
 	for (const auto& mesh : meshes_)
-		std::cout;
+		Debug::get();
 }
 
 std::vector<std::shared_ptr<ns::LightBase_>> ns::Model::getLights() const

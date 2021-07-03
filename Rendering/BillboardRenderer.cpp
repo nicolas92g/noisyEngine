@@ -7,7 +7,7 @@ ns::BillboardRenderer::BillboardRenderer(Camera& cam, const TextureView& texture
 	:
 	cam_(cam),
 	texture_(texture),
-	shader_(NS_PATH"assets/shaders/billboard.vert", NS_PATH"assets/shaders/billboard.frag", NS_PATH"assets/shaders/billboard.geom", {}, true)
+	shader_(NS_PATH"assets/shaders/main/billboard.vert", NS_PATH"assets/shaders/main/billboard.frag", NS_PATH"assets/shaders/main/billboard.geom", {}, true)
 {
 	glGenVertexArrays(1, &VAO);
 	glBindVertexArray(VAO);
