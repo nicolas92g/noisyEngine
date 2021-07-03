@@ -26,5 +26,3 @@
 - transparent material support
 - dir lights shadows
 - point lights shadows
-- bloom effect
-- emissive property
