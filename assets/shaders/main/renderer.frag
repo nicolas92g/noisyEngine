@@ -21,20 +21,20 @@ uniform struct DirLight {
 uniform int dirLightNumber;
 
 uniform struct PointLight{
-    vec3 position;
+    vec3 position ;
     vec3 color;
-    float attenuation;
+    float attenuation ;
 } pointLights[MAX_POINT_LIGHTS];
 
 uniform int pointLightNumber;
 
 uniform struct SpotLight{
     vec3 position;
-    vec3 color;
+    vec3 color ;
     float attenuation;
 
     vec3 direction;
-    float innerCutOff;
+    float innerCutOff ;
     float outerCutOff;
 } spotLights[MAX_SPOT_LIGHTS];
 
@@ -93,7 +93,7 @@ vec3 CalcPointLight(PointLight light, vec3 F0, vec3 fragPos, vec3 viewDir, Pixel
 vec3 CalcSpotLight(SpotLight spotLight, vec3 F0, vec3 fragPos, vec3 viewDir, PixelMaterial pbr);
 vec3 calcNormalMapping();
 
-void main(){    
+void main(){
     PixelMaterial pbr = getMaterial();
 
 	//fragment to eye of the camera vector
@@ -131,7 +131,7 @@ void main(){
     const float MAX_REFLECTION_LOD = 4.0;
     vec3 prefilteredColor = textureLod(prefilteredEnvironmentMap, R,  pbr.roughness * MAX_REFLECTION_LOD).rgb;
     vec2 brdf  = texture(brdfLutMap, vec2(max(dot(pbr.normal, V), 0.0), pbr.roughness)).rg;
-    vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
+    vec3 specular = prefilteredColor * (F * brdf.x + brdf.y) * 1;
 
     vec3 ambient = (kD * diffuseValue + specular) * pbr.ao;
 

@@ -2,6 +2,10 @@
 
 #include <glm/glm.hpp>
 #include <optional>
+#include <string>
+#include <unordered_map>
+
+#include <Utils/yamlConverter.h>
 
 namespace ns {
 	class Object3d
@@ -11,7 +15,9 @@ namespace ns {
 
 		virtual glm::vec3 position() const;
 		virtual glm::vec3 WorldPosition() const;
+		virtual const std::string& name() const;
 		virtual void setPosition(const glm::vec3& position);
+		virtual void setName(const std::string& name);
 
 		virtual void setParent(Object3d* parent);
 		virtual void removeParent();
@@ -19,12 +25,19 @@ namespace ns {
 		virtual bool hasParent() const;
 		virtual Object3d* parent() const;
 
+		virtual YAML::Node inputFromYAML(const std::string& filepath);
+
 	protected:
 		glm::vec3 position_;
 		std::optional<Object3d*> parent_;
+		std::string name_;
 
 		virtual bool isGeometricObject3d();
 		virtual bool isDirectionalObject3d();
+
+		friend class Debug;
+		static unsigned entityCount;
+		static std::unordered_map<std::string, Object3d*> objects;
 	};
 
 	class DirectionalObject3d : public Object3d
@@ -37,6 +50,8 @@ namespace ns {
 
 	protected:
 		glm::vec3 direction_;
+
+		friend class Debug;
 	};
 
 	class GeometricObject3d : public Object3d
@@ -51,7 +66,7 @@ namespace ns {
 
 
 		glm::vec3 scale() const;
-		glm::vec3 rotationAxe() const;
+		glm::vec3 rotationAxis() const;
 		float rotationAngle() const;
 
 		const glm::mat4& modelMatrix() const;
@@ -68,5 +83,7 @@ namespace ns {
 		glm::mat4 scaleMatrix_;
 		glm::mat4 rotationMatrix_;
 		glm::mat4 modelMatrix_;
+
+		friend class Debug;
 	};
 }

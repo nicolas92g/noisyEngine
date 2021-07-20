@@ -1,5 +1,7 @@
 #include "utils.h"
 
+#include <fstream>
+
 std::string ns::to_string(const glm::vec2& vec)
 {
 	return "( " + std::to_string(vec.x) + ", " + std::to_string(vec.y) + " )";
@@ -11,6 +13,21 @@ std::string ns::to_string(const glm::vec3& vec)
 }
 
 std::string ns::to_string(const glm::vec4& vec)
+{
+	return "( " + std::to_string(vec.x) + ", " + std::to_string(vec.y) + ", " + std::to_string(vec.z) + ", " + std::to_string(vec.w) + " )";
+}
+
+std::string ns::to_string(const glm::ivec2& vec)
+{
+	return "( " + std::to_string(vec.x) + ", " + std::to_string(vec.y) + " )";
+}
+
+std::string ns::to_string(const glm::ivec3& vec)
+{
+	return "( " + std::to_string(vec.x) + ", " + std::to_string(vec.y) + ", " + std::to_string(vec.z) + " )";
+}
+
+std::string ns::to_string(const glm::ivec4& vec)
 {
 	return "( " + std::to_string(vec.x) + ", " + std::to_string(vec.y) + ", " + std::to_string(vec.z) + ", " + std::to_string(vec.w) + " )";
 }
@@ -48,4 +65,18 @@ glm::vec4 ns::to_vec4(const ofbx::Vec4& vec)
 void ns::to_mat4(glm::mat4& output, const aiMatrix4x4* mat)
 {
 	for (char i = 0; i < 4; i++) for (char j = 0; j < 4; j++) output[i][j] = (*mat)[i][j];
+}
+
+void ns::clearConfigFile()
+{
+	std::ofstream file(CONFIG_FILE);
+	file << "";
+	file.close();
+}
+
+glm::vec4 ns::getClearColor()
+{
+	GLfloat bk[4];
+	glGetFloatv(GL_COLOR_CLEAR_VALUE, bk);
+	return *reinterpret_cast<glm::vec4*>(&bk);
 }

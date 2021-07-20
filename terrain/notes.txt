@@ -1,0 +1,23 @@
+﻿
+
+smooth normals function
+size = x + 1, y + 1
+
+1) create a biarray with a size of (size.x + 2) and (size.y + 2) which store positions
+2) create and array of triangles out of those positions and calculate triangles normals  
+3) create and biarray of Vertex with a size of size, which contain only needed vertices and then calculate in there the smooth normals using the normals array
+4) create textures coordinates by dividing the chunk by its size 
+
+
+notes : 
+- heightmap generator is really not optimized 
+
+- goes through the center of a biarray like this :
+
+	for (size_t i = 0; i < size.x; i++)
+	{
+		for (size_t j = 0; j < size.y; j++)
+		{
+			positions.value(i + 1, j + 1).y = TWO_DIM(i, j, size.x);
+		}
+	}

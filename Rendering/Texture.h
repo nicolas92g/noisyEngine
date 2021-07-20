@@ -61,5 +61,6 @@ namespace ns {
 		int height_;
 
 		friend class Texture;
+		friend class Debug;
 	};
 }

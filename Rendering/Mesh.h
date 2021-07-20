@@ -59,21 +59,13 @@ namespace ns {
 	};
 
 	struct MeshConfigInfo {
-		MeshConfigInfo() :
-			name("unnamed"),
-			supportNormalMapping(true),
-			primitive(GL_TRIANGLES),
-			indexType(GL_UNSIGNED_INT),
-			hasBitangents(true),
-			hasAnimations(false)
-		{}
-
-		std::string name;
-		bool supportNormalMapping;
-		bool hasBitangents;
-		GLuint primitive;
-		GLuint indexType;
-		bool hasAnimations;
+		std::string name = "unnamed";
+		bool supportNormalMapping = true;
+		bool hasBitangents = true;
+		GLuint primitive = GL_TRIANGLES;
+		GLuint indexType = GL_UNSIGNED_INT;
+		bool hasAnimations = false;
+		bool indexedVertices = true;
 	};
 
 	class Mesh : public Drawable
@@ -81,7 +73,7 @@ namespace ns {
 	public:
 		Mesh(const std::vector<Vertex>& vertices,
 			const std::vector<unsigned int>& indices,
-			const ns::Material& material, 
+			const ns::Material& material = Material::getDefault(), 
 			const MeshConfigInfo& info = MeshConfigInfo());
 
 		Mesh(const std::vector<Vertex>& vertices,
@@ -100,7 +92,7 @@ namespace ns {
 		unsigned bonesBufferObject_;
 		unsigned indexBufferObject_;
 
-		const Material& material_;
+		Material material_;
 		int numberOfVertices_;
 
 		const MeshConfigInfo info_;
@@ -110,5 +102,7 @@ namespace ns {
 			std::vector<unsigned char>& indicesBytes,
 			std::vector<unsigned short>& indicesShorts) const;
 		const short getIndexTypeSize() const;
+
+		friend class Debug;
 	};
 };

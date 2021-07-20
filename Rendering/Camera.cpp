@@ -1,4 +1,7 @@
 #include "Camera.h"
+#include <fstream>
+#include <Utils/yamlConverter.h>
+
 using namespace glm;
 
 ns::Camera::Camera(const vec3& pos, float pitch, float yaw, float fov)

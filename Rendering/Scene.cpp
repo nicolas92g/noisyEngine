@@ -55,6 +55,36 @@ void ns::Scene::updateStationaries()
 	}
 }
 
+void ns::Scene::addEntity(DrawableObject3d& object)
+{
+	addElement(&object, entities_);
+}
+
+void ns::Scene::removeEntity(DrawableObject3d& object)
+{
+	removeElement(&object, entities_);
+}
+
+void ns::Scene::clearEntities()
+{
+	entities_.clear();
+}
+
+void ns::Scene::addStationary(DrawableObject3d& object)
+{
+	addElement(&object, stationaries_);
+}
+
+void ns::Scene::removeStationary(DrawableObject3d& object)
+{
+	removeElement(&object, stationaries_);
+}
+
+void ns::Scene::clearStationaries()
+{
+	stationaries_.clear();
+}
+
 void ns::Scene::addLight(LightBase_& light)
 {
 	addElement(&light, lights_);

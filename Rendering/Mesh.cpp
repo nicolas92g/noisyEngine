@@ -10,7 +10,7 @@ ns::Mesh::Mesh(
     const ns::Material& material,
     const ns::MeshConfigInfo& info)
     :
-    numberOfVertices_(static_cast<int>(indices.size())),
+    numberOfVertices_((info.indexedVertices) ? static_cast<int>(indices.size()) : static_cast<int>(vertices.size())),
     material_(material),
     info_(info)
 {
@@ -23,39 +23,43 @@ ns::Mesh::Mesh(
     glBindBuffer(GL_ARRAY_BUFFER, vertexBufferObject_);
     glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
 
-    //create index buffer
-    glGenBuffers(1, &indexBufferObject_);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferObject_);
-    std::vector<unsigned char> buf1; std::vector<unsigned short> buf2;
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * getIndexTypeSize(), getIndices(indices, buf1, buf2), GL_STATIC_DRAW);
-
-    constexpr GLsizei STRIDE = sizeof(Vertex);
+    if (info_.indexedVertices) {
+        //create index buffer
+        glGenBuffers(1, &indexBufferObject_);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferObject_);
+        std::vector<unsigned char> buf1; std::vector<unsigned short> buf2;
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * getIndexTypeSize(), getIndices(indices, buf1, buf2), GL_STATIC_DRAW);
+    }
 
     // vertex positions
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, STRIDE, (void*)offsetof(Vertex, position));
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
 
     // vertex normals
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, STRIDE, (void*)offsetof(Vertex, normal));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
     
     // vertex texture coords
     glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, STRIDE, (void*)offsetof(Vertex, uv));
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
 
     // vertex tangents
     glEnableVertexAttribArray(3);
-    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, STRIDE, (void*)offsetof(Vertex, tangent));
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, tangent));
 
     // vertex bitangents
     glEnableVertexAttribArray(4);
-    glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, STRIDE, (void*)offsetof(Vertex, bitangent));
+    glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, bitangent));
 
     //unbind vertex array 
     glBindVertexArray(0);
 }
 
-ns::Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<VertexBoneData>& animData, const std::vector<unsigned int>& indices, const ns::Material& material, const MeshConfigInfo& info)
+ns::Mesh::Mesh(const std::vector<Vertex>& vertices, 
+    const std::vector<VertexBoneData>& animData, 
+    const std::vector<unsigned int>& indices, 
+    const ns::Material& material, 
+    const MeshConfigInfo& info)
     :
     Mesh(vertices, indices, material, info)
 {
@@ -78,7 +82,8 @@ ns::Mesh::~Mesh()
 {
     //destroy buffers and vertex array
 	glDeleteBuffers(1, &vertexBufferObject_);
-	glDeleteBuffers(1, &indexBufferObject_);
+	if(info_.indexedVertices) 
+        glDeleteBuffers(1, &indexBufferObject_);
 	glDeleteBuffers(1, &bonesBufferObject_);
 	glDeleteVertexArrays(1, &vertexArrayObject_);
 }
@@ -94,7 +99,10 @@ void ns::Mesh::draw(const Shader& shader) const
     glBindVertexArray(vertexArrayObject_);
 
     //draw call
-    glDrawElements(info_.primitive, numberOfVertices_, info_.indexType, (void*)0);
+    if (info_.indexedVertices)
+        glDrawElements(info_.primitive, numberOfVertices_, info_.indexType, (void*)0);
+    else
+        glDrawArrays(info_.primitive, 0, numberOfVertices_);
 }
 
 const void* ns::Mesh::getIndices(const std::vector<unsigned int>& indices,

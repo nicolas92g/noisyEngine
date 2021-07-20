@@ -29,5 +29,7 @@ namespace ns {
 	protected:
 		Drawable& model_;
 		std::vector<std::shared_ptr<ns::LightBase_>> lights_;
+
+		friend class Debug;
 	};
 }

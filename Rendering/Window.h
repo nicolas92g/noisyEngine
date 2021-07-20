@@ -4,14 +4,17 @@
 #include <glm/glm.hpp>
 #include <GLFW/glfw3.h>
 
+#include <configNoisy.hpp>
+#include <string>
+
 namespace ns {
 	class Window
 	{
 	public:
 		Window(uint32_t width = 800, 
 			uint32_t height = 600, 
-			const char* title = "Opengl 4.3 window", 
-			int samplesCount = 4,
+			const char* title = "Opengl 4.3 window",
+			int samplesCount = 1,
 			bool transparentFramebuffer = false);
 
 		Window(Window&) = delete;
@@ -27,6 +30,7 @@ namespace ns {
 		glm::ivec2 size() const;
 		bool isFocused() const;
 		GLFWmonitor* monitor() const;
+		GLFWmonitor* getUsedMonitor() const;
 
 		void setWidth(const int width);
 		void setHeight(const int height);
@@ -48,6 +52,7 @@ namespace ns {
 		void recordFrameTiming();
 		double deltaTime() const;
 		uint32_t framerate() const;
+
 	protected:
 		GLFWwindow* window_;
 		int width_;
@@ -56,6 +61,11 @@ namespace ns {
 		uint32_t fps_ = 60;
 		bool fullscreen_;
 		bool fullscreenKeyState_;
+		bool maximised_;
+
+		glm::ivec4 previousWindowPosAndSize_;
+		void importFromYAML(const std::string& filepath);
+		void exportIntoYAML(const std::string& filepath);
 
 	private:
 		static void framebufferResizeCallback(GLFWwindow* window, int width, int height);

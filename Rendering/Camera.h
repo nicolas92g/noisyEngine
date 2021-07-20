@@ -177,5 +177,7 @@ namespace ns {
         float fov_;
         float zNear_;
         float zFar_;
+
+        friend class Debug;
     };
 }

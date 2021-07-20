@@ -9,6 +9,7 @@
 #include "Scene.h"
 #include "SkyMapRenderer.h"
 #include "PostProcessingLayer.h"
+#include <configNoisy.hpp>
 
 //stl
 #include <memory>
@@ -19,17 +20,21 @@
 namespace ns {
 
 	struct Renderer3dCreateInfo {
-		Renderer3dCreateInfo(const std::string& envHdrMapPath = "") {
+		Renderer3dCreateInfo(const std::string& envHdrMapPath = NS_PATH"assets/textures/HDR_029_Sky_Cloudy_Ref.hdr") {
 			directionalLightsMax = 5;
 			pointLightsMax = 100;
 			spotLightsMax = 50;
 			environmentMap = envHdrMapPath;
+			FXAA = true;
+			bloomIteration = 5;
 		}
 
 		unsigned int directionalLightsMax;
 		unsigned int pointLightsMax;
 		unsigned int spotLightsMax;
 		std::string environmentMap;
+		bool FXAA;
+		int bloomIteration;
 	};
 
 	class Renderer3d
@@ -45,6 +50,10 @@ namespace ns {
 
 		void setCamera(Camera& camera);
 		void setScene(Scene& scene);
+		Renderer3dCreateInfo& settings();
+
+		void importFromYAML(const std::string filename);
+		void exportIntoYAML(const std::string filename);
 
 	protected:
 		Renderer3dCreateInfo info_;
@@ -95,5 +104,7 @@ namespace ns {
 
 
 		SkyMapRenderer skyBox;
+
+		friend class Debug;
 	};
 }

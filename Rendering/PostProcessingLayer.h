@@ -49,6 +49,7 @@ namespace ns{
 		unsigned colorMap2() const;
 		unsigned depthMap() const;
 
+		const Shader& computeShader() const;
 
 		static void createScreen();
 		static void deleteScreen();

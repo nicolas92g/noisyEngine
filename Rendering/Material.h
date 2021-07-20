@@ -21,7 +21,7 @@ namespace ns {
 	class Material
 	{
 	public:
-		Material(const glm::vec3& albedo = glm::vec3(.5f), float roughness = .9f, float metallic = .01f, float emission = 0.f);
+		Material(const glm::vec3& albedo = glm::vec3(.5f), float roughness = .1f, float metallic = .01f, float emission = 0.f);
 		Material(aiMaterial* mtl, const std::string& texturesDirectory);
 		Material(const ofbx::Material* mtl, const std::string& texturesDirectory);
 
@@ -58,7 +58,8 @@ namespace ns {
 
 		//material textures usage:
 		static void clearTextures();
-		static bool describeMaterialsWhenCreate;	
+		static bool describeMaterialsWhenCreate;
+		static const Material& getDefault();
 
 	private:
 		std::string name_;
@@ -88,5 +89,9 @@ namespace ns {
 		static std::vector<std::unique_ptr<ns::Texture>> textures;
 		static TextureView addTexture(const std::string& directory, const std::string& path);
 		static void removeTexture(const TextureView& view);
+
+		static Material defaultMaterial;
+
+		friend class Debug;
 	};
 }

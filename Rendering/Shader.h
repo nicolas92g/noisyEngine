@@ -1,8 +1,14 @@
 #pragma once
+
+//gl
 #include <glad/glad.h>
-#include <string>
 #include <glm/glm.hpp>
+
+//stl
 #include <unordered_map>
+#include <string>
+
+//ns
 #include "Window.h"
 
 //enable shaders recompilation in the runtime with a key
@@ -65,6 +71,7 @@ namespace ns {
 		
 	protected:
 		uint32_t id;
+		mutable std::unordered_map<std::string, int> uniformsNames_;
 
 #		ifdef RUNTIME_SHADER_RECOMPILATION
 		std::vector<const char*> filepaths;
@@ -76,6 +83,11 @@ namespace ns {
 		void loadShaderFrom(const char* vertexPath, const char* fragmentPath, const char* geometryPath, const std::vector<Define>& defines);
 		void loadComputeShaderFrom(const char* computePath, const std::vector<Define>& defines);
 		void setDefines(std::string& shaderCode, const std::vector<ns::Shader::Define>& defines, ns::Shader::Stage stage);
+
+		static void removeCommentsFromGlslSource(std::string& source);
+		static void treatUniformArrays(std::vector<std::string>& names, const std::string& source);
+		void readUniformsNamesFromSource(const std::string& source);
+		int getUniformLocation(const std::string& name) const;
 
 		void compileShader(const char* vertexText, const char* fragmentText, const char* geometryText);
 		static bool filepathToString(std::string& string, const char* filepath);

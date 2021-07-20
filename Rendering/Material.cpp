@@ -9,6 +9,8 @@
 std::vector<std::unique_ptr<ns::Texture>> ns::Material::textures;
 bool ns::Material::describeMaterialsWhenCreate = false;
 
+ns::Material ns::Material::defaultMaterial;
+
 ns::Material::Material(const glm::vec3& albedo, float roughness, float metallic, float emission)
 	:
 	albedo_(albedo),
@@ -344,6 +346,11 @@ void ns::Material::describeMaterial(aiMaterial* mtl)
 void ns::Material::clearTextures()
 {
 	textures.clear();
+}
+
+const ns::Material& ns::Material::getDefault()
+{
+	return Material::defaultMaterial;
 }
 
 ns::TextureView ns::Material::addTexture(const std::string& directory, const std::string& path)

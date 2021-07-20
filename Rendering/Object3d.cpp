@@ -3,10 +3,16 @@
 #include <glm/gtx/transform.hpp>
 #include <Utils/DebugLayer.h>
 
+unsigned ns::Object3d::entityCount(0);
+std::unordered_map < std::string, ns::Object3d* > objects;
+
 ns::Object3d::Object3d(const glm::vec3& position)
 	:
 	position_(position)
-{}
+{
+	name_ = "entity" + std::to_string(entityCount);
+	entityCount++;
+}
 
 glm::vec3 ns::Object3d::position() const
 {
@@ -27,9 +33,19 @@ glm::vec3 ns::Object3d::WorldPosition() const
 	return parent_.value()->WorldPosition() + position_;
 }
 
+const std::string& ns::Object3d::name() const
+{
+	return name_;
+}
+
 void ns::Object3d::setPosition(const glm::vec3& position)
 {
 	position_ = position;
+}
+
+void ns::Object3d::setName(const std::string& name)
+{
+	name_ = name;
 }
 
 void ns::Object3d::setParent(Object3d* parent)
@@ -55,6 +71,17 @@ bool ns::Object3d::hasParent() const
 ns::Object3d* ns::Object3d::parent() const
 {
 	return parent_.value_or(nullptr);
+}
+
+YAML::Node ns::Object3d::inputFromYAML(const std::string& filepath)
+{
+	using namespace YAML;
+
+	Node conf = LoadFile(filepath);
+	if (!conf) return conf;
+
+	setPosition(conf[name_]["position"].as<glm::vec3>());
+	return conf;
 }
 
 bool ns::Object3d::isGeometricObject3d()
@@ -132,7 +159,7 @@ glm::vec3 ns::GeometricObject3d::scale() const
 	return scale_;
 }
 
-glm::vec3 ns::GeometricObject3d::rotationAxe() const
+glm::vec3 ns::GeometricObject3d::rotationAxis() const
 {
 	return axis_;
 }

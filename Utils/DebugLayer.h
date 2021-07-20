@@ -1,7 +1,9 @@
 #pragma once
+
 #include <Rendering/Scene.h>
 #include <Rendering/Window.h>
 #include <Rendering/Camera.h>
+#include <Rendering/Renderer3d.h>
 
 #include <vector>
 #include <iostream>
@@ -12,11 +14,10 @@ namespace ns {
 	class Debug : public std::stringstream
 	{
 	public:
-		static void create(Window& win, Camera& cam);
-		void destroy();
 		
 		void setCamera(Camera& cam);
 		void setWindow(Window& win);
+		void setRenderer3d(Renderer3d& renderer);
 		void setScenes(const std::vector<ns::Scene*>& scenes);
 		void addScene(Scene& scene);
 		void removeScene(Scene& scene);
@@ -24,6 +25,7 @@ namespace ns {
 
 
 		void render();
+		void log();
 		static Debug& get();
 
 #		ifndef NDEBUG
@@ -31,14 +33,15 @@ namespace ns {
 		static size_t memoryHeapFreed;
 #		endif
 	protected:
-		Debug(Window& win, Camera& cam);
+		Debug();
 		performanceBench bench;
 
-		static Debug* debug;
+		static Debug debugObject;
 		std::stringstream couts_;
 
-		Window& win_;
-		Camera& cam_;
+		Window* win_;
+		Camera* cam_;
+		Renderer3d* renderer_;
 		std::vector<ns::Scene*> scenes_;
 
 		int shellMaxChars_;
@@ -51,12 +54,17 @@ namespace ns {
 		void cameraMenu();
 		void heapMenu();
 		void scenesMenu();
+		void rendererMenu();
 		
 		void shell();
 
 		void inputObject3d(Object3d& obj);
 		void inputDirectionalObject3d(DirectionalObject3d& obj);
-		void input
+		void inputGeometricObject3d(GeometricObject3d& obj);
+		void inputDrawableObject3d(DrawableObject3d& obj);
+
+		void MaterialComponentInput(std::optional<ns::TextureView>& texture, float& value);
+		void inputMaterial(Material& mat);
 	};
 }
 

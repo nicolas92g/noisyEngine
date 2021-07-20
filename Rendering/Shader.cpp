@@ -119,6 +119,10 @@ void ns::Shader::loadShaderFrom(const char* vertexPath, const char* fragmentPath
 	setDefines(fragment, defines, ns::Shader::Stage::Fragment);
 	setDefines(geometry, defines, ns::Shader::Stage::Geometry);
 
+	//readUniformsNamesFromSource(vertex);
+	//readUniformsNamesFromSource(fragment);
+	//readUniformsNamesFromSource(geometry);
+
 	compileShader(vertex.c_str(), fragment.c_str(), geometry.c_str());
 }
 
@@ -130,6 +134,9 @@ void ns::Shader::loadComputeShaderFrom(const char* computePath, const std::vecto
 	}
 
 	setDefines(computeText, defines, ns::Shader::Stage::Compute);
+
+	removeCommentsFromGlslSource(computeText);
+	//readUniformsNamesFromSource(computeText);
 
 	const char* text = computeText.c_str();
 
@@ -180,6 +187,168 @@ void ns::Shader::setDefines(std::string& shaderCode, const std::vector<ns::Shade
 			shaderCode.insert(pos + 1, line + " " + define.value + '\n');
 		}
 	}
+}
+
+void ns::Shader::removeCommentsFromGlslSource(std::string& source)
+{
+	//remove line comments 
+	size_t lineCommentBeg = source.find("//");
+	while (lineCommentBeg != source.npos) {
+		source.erase(lineCommentBeg, source.find('\n', lineCommentBeg) - lineCommentBeg);
+		lineCommentBeg = source.find("//", lineCommentBeg + 1);
+	}
+	//remove paragraph comments
+	size_t paragraphCommentBeg = source.find("/*");
+	while (paragraphCommentBeg != source.npos) {
+		source.erase(paragraphCommentBeg, source.find("*/", paragraphCommentBeg) - paragraphCommentBeg + 2);
+		paragraphCommentBeg = source.find("/*", paragraphCommentBeg + 1);
+	}
+}
+
+void ns::Shader::treatUniformArrays(std::vector<std::string>& names, const std::string& source)
+{
+	for (const std::string& name : names) {
+		size_t bracketBeg = name.find('[');
+		if (bracketBeg == name.npos) continue;
+
+		size_t bracketEnd = name.find(']');
+		if (bracketBeg == name.npos) {
+			Debug::get() << "Shader uniform error : in uniform :" << name << " ! can't find ']' \n";
+		}
+		std::string size = name.substr(bracketBeg + 1, bracketEnd - bracketBeg - 1);
+
+		int value = 0;
+
+		try {
+			value = std::stoi(size);
+		}
+		catch (...) {
+			size_t pos = source.find(size);
+			if (pos == source.npos) {
+				Debug::get() << "Shader error in a uniform array : " << name << " can't find it's numeric size !\n";
+				return;
+			}
+			std::string line = source.substr(pos, source.find('\n', pos) - pos - 1);
+
+			std::stringstream sline(line);
+			std::string word;
+
+			while (sline >> word) {
+				try {
+					value = stoi(word);
+				}
+				catch (...) { continue; }
+			}
+		}
+		if (value == 0) {
+			Debug::get() << "Shader error : failed to find uniform array size : " << name << std::endl;
+		}
+
+		std::string arrayName = name.substr();
+	}
+}
+
+void ns::Shader::readUniformsNamesFromSource(const std::string& source)
+{
+	std::stringstream file(source);
+
+	std::vector<std::string> uniforms;
+
+	std::string word;
+	while (file >> word) {
+		if (word == "uniform") {
+			file >> word;
+			
+			//struct uniform 
+			if (word == "struct") {
+				std::vector<std::string> names;
+				std::vector<std::string> vars;
+
+				size_t bracketPos;
+
+				do
+				{
+					if (!(file >> word)) break;
+
+					bracketPos = word.find('{');
+				} while (bracketPos == word.npos);
+
+				bool bracketFound = false;
+				do
+				{
+					do {
+						std::string previousWord = word;
+						if (!(file >> word)) return;
+
+						bracketFound = (word.find('}') != word.npos);
+						if (bracketFound) break;
+
+						size_t semicolon = word.find(';');
+						if (semicolon == word.npos) continue;
+
+						if (semicolon == 0) {
+							vars.push_back(previousWord);
+							break;
+						}
+						else {
+							word.erase(semicolon);
+							vars.push_back(word);
+							break;
+						}											
+					} while (true);
+				} while (!bracketFound);
+
+				if (word.size() == 1) {
+					file >> word;
+				}
+				size_t pos = word.find('}');
+				if (pos != word.npos) word.erase(pos);
+
+				pos = word.find(';');
+				if (pos != word.npos) word.erase(pos);
+
+				names.push_back(word);
+
+				treatUniformArrays(names, source);
+
+				std::vector<std::string> realNames;
+
+				for (const auto& var : vars)
+					realNames.push_back(names[0] + '.' + var);
+
+				treatUniformArrays(realNames, source);
+
+				for (const auto& name : realNames)
+					Debug::get() << name << std::endl;
+			}
+			else {
+				//get the uniform name
+				file >> word;
+
+				//remove semicolon
+				size_t semiColonPos = word.find(';');
+				if (semiColonPos != word.npos)
+					word.erase(semiColonPos);
+
+				uniforms.push_back(word);
+			}
+		}
+	}
+	treatUniformArrays(uniforms, source);
+}
+
+int ns::Shader::getUniformLocation(const std::string& name) const
+{
+#	ifndef NDEBUG
+	if (uniformsNames_.find(name) != uniformsNames_.end())
+		return uniformsNames_[name];
+
+	Debug::get() << "Shader::getUniformLocation error ! uniform name :" << name << " is not registered !\n";
+	return glGetUniformLocation(id, name.c_str());
+
+#	else
+	return uniformsNames_[name];
+#	endif // !NDEBUG
 }
 
 void ns::Shader::use() const

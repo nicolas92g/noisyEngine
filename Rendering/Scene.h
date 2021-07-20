@@ -22,6 +22,14 @@ namespace ns {
 
 		void updateStationaries();
 
+		void addEntity(DrawableObject3d& object);
+		void removeEntity(DrawableObject3d& object);
+		void clearEntities();
+
+		void addStationary(DrawableObject3d& object);
+		void removeStationary(DrawableObject3d& object);
+		void clearStationaries();
+
 		void addLight(LightBase_& light);
 		void removeLight(LightBase_& light);
 		void addLights(const std::vector<std::shared_ptr<LightBase_>>& lights);
@@ -31,11 +39,14 @@ namespace ns {
 		std::vector<DrawableObject3d*> stationaries_;	//motionless Objects
 		std::vector<LightBase_*> lights_;				//lights Objects using polymorphism
 
+		friend class Debug;
+
 		template<typename T>
 		static void addElement(T* element, std::vector<T*>& arr);
 
 		template<typename T>
 		static void removeElement(T* element, std::vector<T*>& arr);
+
 	};
 
 	template<typename T>

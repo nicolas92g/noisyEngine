@@ -1,11 +1,15 @@
 #include <glad/glad.h>
 
 #include "Window.h"
+#include <Utils/DebugLayer.h>
 
 #include <iostream>
 #include <chrono>
 
-#ifndef NDEBUG
+#include <Utils/yamlConverter.h>
+#include <fstream>
+
+#ifdef USE_IMGUI
 #define IMGUI_IMPL_OPENGL_LOADER_GLAD
 #include <imgui.h>
 #include "imgui_impl_glfw.h"
@@ -17,7 +21,8 @@ ns::Window::Window(uint32_t width, uint32_t height, const char* title, int sampl
     width_(width), 
     height_(height),    
     fullscreen_(false),
-    fullscreenKeyState_(false)
+    fullscreenKeyState_(false),
+    previousWindowPosAndSize_(0, 0, width_, height_)
 {
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -53,8 +58,11 @@ ns::Window::Window(uint32_t width, uint32_t height, const char* title, int sampl
 
     glfwSwapInterval(0);
 
+    Debug::get() << glGetString(GL_VENDOR) << ' ' << glGetString(GL_RENDERER) << '\n'
+        << "OpenGL version : " << glGetString(GL_VERSION) << "\n----\n";
+
 	//debug callbacks
-#	ifndef NDEBUG
+#	ifdef USE_IMGUI
 
 	int flags; glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
 	if (flags & GL_CONTEXT_FLAG_DEBUG_BIT)
@@ -77,21 +85,23 @@ ns::Window::Window(uint32_t width, uint32_t height, const char* title, int sampl
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
-    //ImGui::StyleColorsLight();
     ImGui_ImplGlfw_InitForOpenGL(window_, true);
     ImGui_ImplOpenGL3_Init();
 
 #	endif //NDEBUG
+
+    importFromYAML(CONFIG_FILE);
 }
 
 ns::Window::~Window()
 {
-#	ifndef NDEBUG
+#	ifdef USE_IMGUI
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 #   endif
 
+    exportIntoYAML(CONFIG_FILE);
 	glfwTerminate();
 }
 
@@ -148,16 +158,26 @@ GLFWmonitor* ns::Window::monitor() const
 
 void ns::Window::setWidth(const int width)
 {
+#ifndef NDEBUG
+    _STL_ASSERT(width >= 0, "window width is set to a negative value");
+#endif // !NDEBUG
     glfwSetWindowSize(window_, width, height_);
 }
 
 void ns::Window::setHeight(const int height)
 {
+#ifndef NDEBUG
+    _STL_ASSERT(height >= 0, "window height is set to a negative value");
+#endif // !NDEBUG
     glfwSetWindowSize(window_, width_, height);
 }
 
 void ns::Window::setSize(const int width, const int height)
 {
+#ifndef NDEBUG
+    _STL_ASSERT(width >= 0, "window width is set to a negative value");
+    _STL_ASSERT(height >= 0, "window height is set to a negative value");
+#endif // !NDEBUG
     glfwSetWindowSize(window_, width, height);
 }
 
@@ -174,7 +194,7 @@ void ns::Window::setCursorPos(double x, double y)
 void ns::Window::hideCursor()
 {
     glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-#   ifndef NDEBUG
+#   ifdef USE_IMGUI
     ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouse;
     ImGui::SetMouseCursor(ImGuiMouseCursor_None);
 #   endif
@@ -183,50 +203,57 @@ void ns::Window::hideCursor()
 void ns::Window::showCursor()
 {
     glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-#   ifndef NDEBUG
+#   ifdef USE_IMGUI
     ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
 #   endif
 }
 
 void ns::Window::setTitle(const char* newTitle)
 {
-    if(!fullscreen_) //renaming window while beeing fulscreen is laggy for some reason
+    if(!fullscreen_) //renaming window while beeing fullscreen is laggy for some reason (and also useless most of the time)
         glfwSetWindowTitle(window_, newTitle);
 }
 
 void ns::Window::maximise()
 {
     glfwMaximizeWindow(window_);
+    maximised_ = true;
 }
 
 void ns::Window::setFullscreen(bool fullscreen)
 {
     if (fullscreen and !fullscreen_) {
+        //save current pos and size
+        previousWindowPosAndSize_ = glm::ivec4(position(), size());
+        //fullscreen
         fullscreen_ = fullscreen;
-        GLFWmonitor* monitorToUse = glfwGetPrimaryMonitor();
+        GLFWmonitor* monitorToUse = getUsedMonitor();
         int x, y;
         glfwGetMonitorWorkarea(monitorToUse, &x, &y, &width_, &height_);
-
         glfwSetWindowMonitor(window_, monitorToUse, x, y, width_, height_, GLFW_DONT_CARE);
     }
 
     if (!fullscreen and fullscreen_){
         fullscreen_ = fullscreen;
-        glfwSetWindowMonitor(window_, nullptr, 100, 100, 800, 600, GLFW_DONT_CARE);
-        glfwRestoreWindow(window_);
-        maximise();
-
+        glfwSetWindowMonitor(window_, nullptr, previousWindowPosAndSize_.x, previousWindowPosAndSize_.y, 800, 600, GLFW_DONT_CARE);
+        //glfwRestoreWindow(window_);
+        setPosition(previousWindowPosAndSize_.x, previousWindowPosAndSize_.y);
+        setSize(previousWindowPosAndSize_.z, previousWindowPosAndSize_.w);
     }
 }
 
 void ns::Window::setPosition(int x, int y)
 {
+#ifndef NDEBUG
+    _STL_ASSERT(x > -100000 and y > -100000, "window cursor is set to an invalid value");
+    _STL_ASSERT(x < 100000 and y < 100000, "window cursor is set to an invalid value");
+#endif // !NDEBUG
     glfwSetWindowPos(window_, x, y);
 }
 
 void ns::Window::beginFrame()
 {
-#   ifndef NDEBUG
+#   ifdef USE_IMGUI
     // Start the Dear ImGui frame
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
@@ -237,9 +264,10 @@ void ns::Window::beginFrame()
 void ns::Window::endFrame()
 {
     glfwPollEvents();
-#   ifndef NDEBUG
+#   ifdef USE_IMGUI
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 #   endif
+    while (!isFocused()){ glfwPollEvents(); swapBuffers(); }
     swapBuffers();
     recordFrameTiming();
 }
@@ -280,11 +308,89 @@ uint32_t ns::Window::framerate() const
     return fps_;
 }
 
+GLFWmonitor* ns::Window::getUsedMonitor() const
+{
+    using namespace std;
+    int nmonitors, i;
+    int wx, wy, ww, wh;
+    int mx, my, mw, mh;
+    int overlap, bestoverlap;
+    GLFWmonitor* bestmonitor;
+    GLFWmonitor** monitors;
+    const GLFWvidmode* mode;
+
+    bestoverlap = 0;
+    bestmonitor = NULL;
+
+    glfwGetWindowPos(window_, &wx, &wy);
+    glfwGetWindowSize(window_, &ww, &wh);
+    monitors = glfwGetMonitors(&nmonitors);
+
+    for (i = 0; i < nmonitors; i++) {
+        mode = glfwGetVideoMode(monitors[i]);
+        glfwGetMonitorPos(monitors[i], &mx, &my);
+        mw = mode->width;
+        mh = mode->height;
+
+        overlap =
+            max(0, min(wx + ww, mx + mw) - max(wx, mx)) *
+            max(0, min(wy + wh, my + mh) - max(wy, my));
+
+        if (bestoverlap < overlap) {
+            bestoverlap = overlap;
+            bestmonitor = monitors[i];
+        }
+    }
+
+    return bestmonitor;
+}
+
+void ns::Window::importFromYAML(const std::string& filepath)
+{
+    YAML::Node config;
+    try {
+        config = YAML::LoadFile(filepath);
+    }
+    catch (...) { std::cerr << "failed to export window settings !\n"; return; }
+    
+    try {
+        glm::ivec2 buf = config["window"]["size"].as<glm::ivec2>();
+        setSize(buf.x, buf.y);
+        buf = config["window"]["position"].as<glm::ivec2>();
+        setPosition(buf.x, buf.y);
+
+        setFullscreen(config["window"]["fullscreen"].as<bool>());
+        if (config["window"]["maximised"].as<bool>()) maximise();
+    }
+    catch (...) {
+        return;
+    }
+}
+
+void ns::Window::exportIntoYAML(const std::string& filepath)
+{
+    YAML::Node conf;
+
+    conf["window"]["size"] = size();
+    conf["window"]["position"] = position();
+    conf["window"]["fullscreen"] = fullscreen_;
+    conf["window"]["maximised"] = maximised_;
+
+    std::ofstream file(filepath, std::ios::app);
+    file << "\n\n";
+    file << conf;
+}
+
 void ns::Window::framebufferResizeCallback(GLFWwindow* window, int width, int height)
 {
 	ns::Window* ptr_ = reinterpret_cast<ns::Window*>(glfwGetWindowUserPointer(window));
 	ptr_->width_ = width;
 	ptr_->height_ = height;
+    ptr_->maximised_ = false;
+
+    while (ptr_->width_ == 0 or ptr_->height_ == 0) {
+        glfwWaitEvents();
+    }
 }
 
 void APIENTRY ns::Window::glDebugOutput(GLenum source,
@@ -333,3 +439,50 @@ void APIENTRY ns::Window::glDebugOutput(GLenum source,
     } std::cerr << std::endl;
     std::cerr << std::endl;
 }
+
+//void APIENTRY ns::Window::glDebugOutput(GLenum source,
+//    GLenum type,
+//    unsigned int id,
+//    GLenum severity,
+//    GLsizei length,
+//    const char* message,
+//    const void* userParam)
+//{
+//    // ignore non-significant error/warning codes
+//    if (id == 131169 || id == 131185 || id == 131218 || id == 131204) return;
+//
+//    Debug::get() << "---------------" << std::endl;
+//    Debug::get() << "Debug message (" << id << "): " << message << std::endl;
+//
+//    switch (source)
+//    {
+//    case GL_DEBUG_SOURCE_API:             Debug::get() << "Source: API"; break;
+//    case GL_DEBUG_SOURCE_WINDOW_SYSTEM:   Debug::get() << "Source: Window System"; break;
+//    case GL_DEBUG_SOURCE_SHADER_COMPILER: Debug::get() << "Source: Shader Compiler"; break;
+//    case GL_DEBUG_SOURCE_THIRD_PARTY:     Debug::get() << "Source: Third Party"; break;
+//    case GL_DEBUG_SOURCE_APPLICATION:     Debug::get() << "Source: Application"; break;
+//    case GL_DEBUG_SOURCE_OTHER:           Debug::get() << "Source: Other"; break;
+//    } Debug::get() << std::endl;
+//
+//    switch (type)
+//    {
+//    case GL_DEBUG_TYPE_ERROR:               Debug::get() << "Type: Error"; break;
+//    case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: Debug::get() << "Type: Deprecated Behaviour"; break;
+//    case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:  Debug::get() << "Type: Undefined Behaviour"; break;
+//    case GL_DEBUG_TYPE_PORTABILITY:         Debug::get() << "Type: Portability"; break;
+//    case GL_DEBUG_TYPE_PERFORMANCE:         Debug::get() << "Type: Performance"; break;
+//    case GL_DEBUG_TYPE_MARKER:              Debug::get() << "Type: Marker"; break;
+//    case GL_DEBUG_TYPE_PUSH_GROUP:          Debug::get() << "Type: Push Group"; break;
+//    case GL_DEBUG_TYPE_POP_GROUP:           Debug::get() << "Type: Pop Group"; break;
+//    case GL_DEBUG_TYPE_OTHER:               Debug::get() << "Type: Other"; break;
+//    } Debug::get() << std::endl;
+//
+//    switch (severity)
+//    {
+//    case GL_DEBUG_SEVERITY_HIGH:         Debug::get() << "Severity: high"; break;
+//    case GL_DEBUG_SEVERITY_MEDIUM:       Debug::get() << "Severity: medium"; break;
+//    case GL_DEBUG_SEVERITY_LOW:          Debug::get() << "Severity: low"; break;
+//    case GL_DEBUG_SEVERITY_NOTIFICATION: Debug::get() << "Severity: notification"; break;
+//    } Debug::get() << std::endl;
+//    Debug::get() << std::endl;
+//}

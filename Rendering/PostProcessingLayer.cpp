@@ -163,6 +163,11 @@ unsigned ns::PostProcessingLayer::depthMap() const
 	return depthAttachement_;
 }
 
+const ns::Shader& ns::PostProcessingLayer::computeShader() const
+{
+	return *computeShader_;
+}
+
 unsigned ns::PostProcessingLayer::colorMap() const
 {
 	return colorAttachement_;
@@ -192,7 +197,6 @@ void ns::PostProcessingLayer::setComputeShader(const std::string& computeShaderF
 void ns::PostProcessingLayer::createScreen()
 {
 	if (screen.isCreated) return;
-
 	//create screen vertex buffer
 	const float vertices[8] = {
 		 1, 1,

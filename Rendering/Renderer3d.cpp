@@ -6,8 +6,10 @@
 #include <Utils/Timer.h>
 #include <configNoisy.hpp>
 #include "BillboardRenderer.h"
+#include <fstream>
 
 #include <Utils/DebugLayer.h>
+#include <Utils/utils.h>
 
 #define NS_IRRADIANCE_MAP_SAMPLER				28
 #define NS_PREFILTERED_ENVIRONMENT_MAP_SAMPLER	29
@@ -31,7 +33,7 @@ ns::Renderer3d::Renderer3d(Window& window, Camera& camera, Scene& scene, const R
 	pbr_ = std::make_unique<ns::Shader>(NS_PATH"assets/shaders/main/renderer.vert", NS_PATH"assets/shaders/main/renderer.frag", nullptr, defines, true);
 
 	initPhysicallyBasedRenderingSystem(info.environmentMap);
-	//launchTickThread();
+	launchTickThread();
 
 	glDisable(GL_MULTISAMPLE);
 	//transparency
@@ -43,11 +45,14 @@ ns::Renderer3d::Renderer3d(Window& window, Camera& camera, Scene& scene, const R
 	glClearColor(0.f, 0.f, 0.f, 1.f);
 
 	skyBox.setCubeMapTexture(environmentMap_);
+
+	importFromYAML(CONFIG_FILE);
 }
 
 ns::Renderer3d::~Renderer3d()
 {
 	runTicks = false;
+	exportIntoYAML(CONFIG_FILE);
 	glDeleteTextures(1, &irradianceMap_);
 }
 
@@ -67,13 +72,15 @@ void ns::Renderer3d::finishRendering()
 
 
 	const int resx = win_.size().x + 32 - win_.size().x % 32, resy = win_.size().y + 32 - win_.size().y % 32;
-	for (uint8_t i = 0; i < 7; i++)
+	
+	for (uint8_t i = 0; i < info_.bloomIteration; i++)
 	{
 		gaussianBlur->set("horizontal", i % 2);
 		glDispatchCompute(resx / 32, resy / 32, 1);
-		glMemoryBarrier(GL_ALL_BARRIER_BITS);
+		glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 	}
 
+	postProcess->computeShader().set("enableFXAA", info_.FXAA);
 	postProcess->startProcessing();
 
 	//final rendering on a quad
@@ -110,6 +117,44 @@ void ns::Renderer3d::setCamera(Camera& camera)
 void ns::Renderer3d::setScene(Scene& scene)
 {
 	scene_ = scene;
+}
+
+ns::Renderer3dCreateInfo& ns::Renderer3d::settings()
+{
+	return info_;
+}
+
+void ns::Renderer3d::importFromYAML(const std::string filename)
+{
+	YAML::Node config;
+	try {
+		config = YAML::LoadFile(filename);
+	}
+	catch (...) { std::cerr << "failed to import renderer settings !\n"; return; }
+
+	try {
+		auto clear = config["renderer"]["clearColor"].as<glm::vec4>();
+		glClearColor(clear.r, clear.g, clear.b, clear.a);
+
+		info_.bloomIteration = config["renderer"]["bloomIteration"].as<int>();
+		info_.FXAA = config["renderer"]["enableFXAA"].as<bool>();
+	}
+	catch (...) {
+		return;
+	}
+}
+
+void ns::Renderer3d::exportIntoYAML(const std::string filename)
+{
+	YAML::Node conf;
+
+	conf["renderer"]["clearColor"] = ns::getClearColor();
+	conf["renderer"]["bloomIteration"] = info_.bloomIteration;
+	conf["renderer"]["enableFXAA"] = info_.FXAA;
+
+	std::ofstream file(filename, std::ios::app);
+	file << "\n\n";
+	file << conf;
 }
 
 void ns::Renderer3d::initPhysicallyBasedRenderingSystem(const std::string& envHdrMapPath)
@@ -151,7 +196,7 @@ void ns::Renderer3d::tickThread(ns::Renderer3d* renderer)
 	using namespace std;
 	using namespace std::chrono;
 	using namespace std::chrono_literals;
-	constexpr auto delta = duration_cast<nanoseconds>(20ms);
+	constexpr auto delta = duration_cast<nanoseconds>(2ms);
 
 	while (renderer->runTicks){
 		const auto time = high_resolution_clock::now();

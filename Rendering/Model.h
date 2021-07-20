@@ -69,5 +69,7 @@ namespace ns {
 
 	protected:
 		GLuint pickIndexType(size_t numberOfPositions) const;
+
+		friend class Debug;
 	};
 };
