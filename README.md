@@ -13,6 +13,7 @@
 - <a href="https://glad.dav1d.de/">glad 4.3 core version release</a>
 - <a href="https://www.glfw.org/">glfw</a>
 - <a href="https://github.com/kthohr/gcem">gcem</a>
+- <a href="https://github.com/jbeder/yaml-cpp">yaml-cpp</a>
 - <a href="https://github.com/nothings/stb/blob/master/stb_image.h">stb_image</a>
 - <a href="https://github.com/assimp/assimp">assimp</a>
 - an edited version of <a href="https://github.com/nem0/OpenFBX">OpenFBX</a>
