@@ -27,6 +27,7 @@ namespace ns {
 			environmentMap = envHdrMapPath;
 			FXAA = true;
 			bloomIteration = 5;
+			showNormals = false;
 		}
 
 		unsigned int directionalLightsMax;
@@ -35,6 +36,7 @@ namespace ns {
 		std::string environmentMap;
 		bool FXAA;
 		int bloomIteration;
+		bool showNormals;
 	};
 
 	class Renderer3d
@@ -91,20 +93,24 @@ namespace ns {
 		Scene& scene_;
 
 		std::shared_ptr<std::thread> tickThread_;
-		std::shared_ptr<std::recursive_mutex> guardian_;
+		std::mutex sceneMutex_;
 		void launchTickThread();
-		static void tickThread(ns::Renderer3d* renderer);
+		void tickThreadFunction();
 		bool runTicks;
 
-		void setDynamicUniforms() const;
+		void setDynamicUniforms(ns::Shader& shader) const;
 
 		//post postprocessing
 		std::unique_ptr<PostProcessingLayer> postProcess;
 		std::unique_ptr<Shader> gaussianBlur;
+		const unsigned gaussianBlurXWorkSize = 32 * 10;
 
 
 		SkyMapRenderer skyBox;
 
 		friend class Debug;
+#		ifndef NDEBUG
+		std::unique_ptr<ns::Shader> normalVisualizer_;
+#		endif
 	};
 }

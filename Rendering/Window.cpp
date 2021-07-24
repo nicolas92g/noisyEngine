@@ -8,6 +8,7 @@
 
 #include <Utils/yamlConverter.h>
 #include <fstream>
+#include <Utils/utils.h>
 
 #ifdef USE_IMGUI
 #define IMGUI_IMPL_OPENGL_LOADER_GLAD
@@ -83,8 +84,10 @@ ns::Window::Window(uint32_t width, uint32_t height, const char* title, int sampl
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
-    // Setup Dear ImGui style
+
     ImGui::StyleColorsDark();
+    ns::SetupImGuiStyle(true, 1.f);
+
     ImGui_ImplGlfw_InitForOpenGL(window_, true);
     ImGui_ImplOpenGL3_Init();
 
@@ -259,6 +262,7 @@ void ns::Window::beginFrame()
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 #   endif
+    Shader::update(*this);
 }
 
 void ns::Window::endFrame()
@@ -351,10 +355,11 @@ void ns::Window::importFromYAML(const std::string& filepath)
     try {
         config = YAML::LoadFile(filepath);
     }
-    catch (...) { std::cerr << "failed to export window settings !\n"; return; }
+    catch (...) { std::cerr << "failed to import window settings !\n"; return; }
     
     try {
         glm::ivec2 buf = config["window"]["size"].as<glm::ivec2>();
+        if (buf.x < 0) { std::cerr << "window size imported is incorrect !"; return; }
         setSize(buf.x, buf.y);
         buf = config["window"]["position"].as<glm::ivec2>();
         setPosition(buf.x, buf.y);

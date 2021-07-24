@@ -27,7 +27,7 @@ namespace ns {
 
 	protected:
 		static size_t heightComputationCount;
-		static std::vector<MapSizeType> heightComputationPos;
+		static std::vector<MapLengthType> heightComputationPos;
 
 		void debugOptimisationHeightsComputations(); //count if the height function is called multiple times for the same point
 	};

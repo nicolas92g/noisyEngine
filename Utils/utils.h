@@ -25,5 +25,6 @@ namespace ns {
 	void to_mat4(glm::mat4& output, const aiMatrix4x4* mat);
 	void clearConfigFile();
 	glm::vec4 getClearColor();
+	void SetupImGuiStyle(bool bStyleDark_, float alpha_);
 }
 

@@ -9,11 +9,17 @@
 #include <iostream>
 #include <sstream>
 #include <Utils/Timer.h>
+#include <Utils/utils.h>
 
 namespace ns {
 	class Debug : public std::stringstream
 	{
 	public:
+		struct MeshDescription {
+			std::vector<Vertex> vertices;
+			bool indexed;
+			std::vector<unsigned> indices;
+		};
 		
 		void setCamera(Camera& cam);
 		void setWindow(Window& win);
@@ -22,6 +28,7 @@ namespace ns {
 		void addScene(Scene& scene);
 		void removeScene(Scene& scene);
 		void clearScenes();
+		void setMeshDescription(const MeshDescription& mesh);
 
 
 		void render();
@@ -42,6 +49,7 @@ namespace ns {
 		Window* win_;
 		Camera* cam_;
 		Renderer3d* renderer_;
+		MeshDescription mesh_;
 		std::vector<ns::Scene*> scenes_;
 
 		int shellMaxChars_;
@@ -55,6 +63,7 @@ namespace ns {
 		void heapMenu();
 		void scenesMenu();
 		void rendererMenu();
+		void meshDecompositionMenu();
 		
 		void shell();
 

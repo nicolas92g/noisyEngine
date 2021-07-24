@@ -32,6 +32,14 @@ ns::Renderer3d::Renderer3d(Window& window, Camera& camera, Scene& scene, const R
 	};
 	pbr_ = std::make_unique<ns::Shader>(NS_PATH"assets/shaders/main/renderer.vert", NS_PATH"assets/shaders/main/renderer.frag", nullptr, defines, true);
 
+#	ifndef NDEBUG
+	normalVisualizer_ = std::make_unique<ns::Shader>(
+		NS_PATH"assets/shaders/debug/normalVisual.vert", 
+		NS_PATH"assets/shaders/debug/normalVisual.frag", 
+		NS_PATH"assets/shaders/debug/normalVisual.geom");
+#	endif // !NDEBUG
+
+
 	initPhysicallyBasedRenderingSystem(info.environmentMap);
 	launchTickThread();
 
@@ -52,6 +60,8 @@ ns::Renderer3d::Renderer3d(Window& window, Camera& camera, Scene& scene, const R
 ns::Renderer3d::~Renderer3d()
 {
 	runTicks = false;
+	tickThread_->join();
+
 	exportIntoYAML(CONFIG_FILE);
 	glDeleteTextures(1, &irradianceMap_);
 }
@@ -71,12 +81,12 @@ void ns::Renderer3d::finishRendering()
 	gaussianBlur->use();
 
 
-	const int resx = win_.size().x + 32 - win_.size().x % 32, resy = win_.size().y + 32 - win_.size().y % 32;
+	const int resx = win_.size().x + gaussianBlurXWorkSize - win_.size().x % gaussianBlurXWorkSize;
 	
 	for (uint8_t i = 0; i < info_.bloomIteration; i++)
 	{
 		gaussianBlur->set("horizontal", i % 2);
-		glDispatchCompute(resx / 32, resy / 32, 1);
+		glDispatchCompute(resx / gaussianBlurXWorkSize, win_.size().y, 1);
 		glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 	}
 
@@ -97,11 +107,23 @@ void ns::Renderer3d::draw()
 	cam_.calculateMatrix(win_);
 	//skyBox.draw();
 
+	std::scoped_lock<std::mutex> lock(sceneMutex_);
+
 	scene_.sendLights(*pbr_);
 
-	setDynamicUniforms();
+	setDynamicUniforms(*pbr_);
 
 	scene_.draw(*pbr_);
+
+#	ifndef NDEBUG
+
+	if (info_.showNormals) {
+		normalVisualizer_->set<glm::mat4>("view", cam_.view());
+		normalVisualizer_->set<glm::mat4>("projection", cam_.projection());
+		scene_.draw(*normalVisualizer_);
+	}
+
+#	endif // !NDEBUG
 }
 
 void ns::Renderer3d::updateStationaries()
@@ -138,6 +160,7 @@ void ns::Renderer3d::importFromYAML(const std::string filename)
 
 		info_.bloomIteration = config["renderer"]["bloomIteration"].as<int>();
 		info_.FXAA = config["renderer"]["enableFXAA"].as<bool>();
+		info_.showNormals = config["renderer"]["showNormals"].as<bool>();
 	}
 	catch (...) {
 		return;
@@ -151,6 +174,7 @@ void ns::Renderer3d::exportIntoYAML(const std::string filename)
 	conf["renderer"]["clearColor"] = ns::getClearColor();
 	conf["renderer"]["bloomIteration"] = info_.bloomIteration;
 	conf["renderer"]["enableFXAA"] = info_.FXAA;
+	conf["renderer"]["showNormals"] = info_.showNormals;
 
 	std::ofstream file(filename, std::ios::app);
 	file << "\n\n";
@@ -180,44 +204,37 @@ void ns::Renderer3d::initPhysicallyBasedRenderingSystem(const std::string& envHd
 	info.ComputeShaderNumWorkGroupY = 32;
 
 	postProcess = std::make_unique<ns::PostProcessingLayer>(win_, info, NS_PATH"assets/shaders/compute/postProcess.comp");
-	gaussianBlur = std::make_unique<ns::Shader>(NS_PATH"assets/shaders/compute/gaussianBlur.comp");
+
+	std::vector<ns::Shader::Define> defines = { 
+		{"NS_NUM_WORK_GROUP_X", std::to_string(gaussianBlurXWorkSize), ns::Shader::Stage::Compute},
+		{"NS_NUM_WORK_GROUP_Y", "1", ns::Shader::Stage::Compute}};
+	gaussianBlur = std::make_unique<ns::Shader>(NS_PATH"assets/shaders/compute/gaussianBlur.comp", defines, true);
 }
 
 void ns::Renderer3d::launchTickThread()
 {
 	using namespace std;
-	guardian_ = make_shared<recursive_mutex>();
-	tickThread_ = make_shared<thread>(&tickThread, this);
-	tickThread_->detach();
+	tickThread_ = make_shared<thread>(&Renderer3d::tickThreadFunction, this);
 }
 
-void ns::Renderer3d::tickThread(ns::Renderer3d* renderer)
+void ns::Renderer3d::tickThreadFunction()
 {
 	using namespace std;
 	using namespace std::chrono;
 	using namespace std::chrono_literals;
-	constexpr auto delta = duration_cast<nanoseconds>(2ms);
+	static constexpr auto delta = duration_cast<nanoseconds>(2ms);
 
-	while (renderer->runTicks){
+	while (runTicks){
 		const auto time = high_resolution_clock::now();
-		try {
-			renderer->guardian_->lock();
+		{
+			std::scoped_lock<std::mutex> lock(sceneMutex_);
+			scene_.update();
 		}
-		catch (std::system_error) {
-			Debug::get() << "remaking the recursive_mutex !\n";
-			renderer->guardian_ = std::make_shared<std::recursive_mutex>();
-			continue;
-		}
-
-		renderer->scene_.update();
-
-		renderer->guardian_->unlock();
-
 		this_thread::sleep_for(delta - (time - high_resolution_clock::now()));
 	}
 }
 
-void ns::Renderer3d::setDynamicUniforms() const
+void ns::Renderer3d::setDynamicUniforms(ns::Shader& shader) const
 {
 #	ifdef RUNTIME_SHADER_RECOMPILATION
 	sendFixDataToShader();
@@ -232,13 +249,13 @@ void ns::Renderer3d::setDynamicUniforms() const
 	glActiveTexture(GL_TEXTURE0 + NS_BRDF_LUT_MAP);
 	glBindTexture(GL_TEXTURE_2D, brdfMap_);
 
-	pbr_->set("projView", cam_.projectionView());
-	pbr_->set("model", glm::scale(glm::vec3(1)));
-	pbr_->set("camPos", cam_.position());
+	shader.set("projView", cam_.projectionView());
+	shader.set("model", glm::scale(glm::vec3(1)));
+	shader.set("camPos", cam_.position());
 
-	pbr_->set<int>("dirLightNumber", DirectionalLight::number());
-	pbr_->set<int>("pointLightNumber", PointLight::number());
-	pbr_->set<int>("spotLightNumber", SpotLight::number());
+	shader.set<int>("dirLightNumber", DirectionalLight::number());
+	shader.set<int>("pointLightNumber", PointLight::number());
+	shader.set<int>("spotLightNumber", SpotLight::number());
 }
 
 void ns::Renderer3d::loadEnvironmentMap(const char* path, int res)

@@ -12,6 +12,16 @@ ns::Scene::Scene(
 	updateStationaries();
 }
 
+ns::Scene::Scene(const Scene& other)
+{
+	*this = other;
+}
+
+ns::Scene::Scene(Scene&& other) noexcept
+{
+	*this = other;
+}
+
 void ns::Scene::sendLights(const ns::Shader& shader) const
 {
 	clearLights();
@@ -104,4 +114,30 @@ void ns::Scene::addLights(const std::vector<std::shared_ptr<LightBase_>>& lights
 	{
 		lights_[i] = lights[i].get();
 	}
+}
+
+void ns::Scene::operator+=(const Scene& other)
+{
+	if(other.entities_.size())
+		entities_.insert(entities_.end(), other.entities_.begin(), other.entities_.end());
+
+	if(other.stationaries_.size())
+		stationaries_.insert(stationaries_.end(), other.stationaries_.begin(), other.stationaries_.end());
+	
+	if(other.lights_.size())
+		lights_.insert(lights_.end(), other.lights_.begin(), other.lights_.end());
+}
+
+void ns::Scene::operator=(const Scene& other)
+{
+	entities_ = other.entities_;
+	stationaries_ = other.stationaries_;
+	lights_ = other.lights_;
+}
+
+void ns::Scene::operator=(Scene&& other) noexcept
+{
+	entities_ = std::move(other.entities_);
+	stationaries_ = std::move(other.stationaries_);
+	lights_ = std::move(other.lights_);
 }

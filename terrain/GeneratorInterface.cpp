@@ -2,8 +2,10 @@
 #include <Utils/DebugLayer.h>
 
 //noisy terrain
-#include <terrain/HeightmapGenerator.h>
-#include <terrain/MeshGenerator.h>
+#include <terrain/Plane/HeightmapStorage.h>
+#include <terrain/HeightMapGenerator.h>
+#include <terrain/Plane/MeshGenerator.h>
+#include <terrain/Plane/FlatTerrainScene.h>
 
 //imgui
 #define IMGUI_IMPL_OPENGL_LOADER_GLAD
@@ -12,7 +14,7 @@
 #include "imgui_impl_opengl3.h"
 
 size_t ns::GeneratorInterface::heightComputationCount;
-std::vector<ns::MapSizeType> ns::GeneratorInterface::heightComputationPos;
+std::vector<ns::MapLengthType> ns::GeneratorInterface::heightComputationPos;
 
 ns::GeneratorInterface::GeneratorInterface()
 	:
@@ -21,7 +23,6 @@ ns::GeneratorInterface::GeneratorInterface()
 	scene_(),
 	renderer_(window_, cam_, scene_, Renderer3dCreateInfo())
 {
-	//glClearColor(.6f, 1, 1, 1);
 	Debug::get().setWindow(window_);
 	Debug::get().setCamera(cam_);
 	Debug::get().setRenderer3d(renderer_);
@@ -29,19 +30,23 @@ ns::GeneratorInterface::GeneratorInterface()
 
 int ns::GeneratorInterface::run()
 {
+	using namespace ns::Plane;
 
-	constexpr PartitionType factor = 1;
-	HeightmapGenerator::Settings settings;
-	settings.numberOfPartitions = ChunkPartitionType(5) * factor;
-	settings.chunkPhysicalSize = MapSizeType(10) * (float)factor;
-	settings.generator_ = [](const MapSizeType& pos) {
+	constexpr PartitionType factor = 4;
+	HeightmapStorage::Settings settings;
+	settings.numberOfPartitions = ChunkPartitionType(32) * factor;
+	settings.chunkPhysicalSize = MapLengthType(32) * (LengthType)factor;
+
+	settings.generator_ = [](const MapLengthType& pos) {
 		heightComputationCount++;
-		heightComputationPos.emplace_back(pos);
-		//return HeightType((cos(pos.x * .5) + sin(pos.y * .5)));
-		return HeightType(pos.y * 1) + HeightType(pos.x * .5);
+		return 
+			abs(simplexNoise(pos * .1lt)) * 1 +
+			abs(simplexNoise(pos * .05lt)) * 4 +
+			abs(simplexNoise(pos * .01lt)) * 8 
+			;
 	};
 
-	HeightmapGenerator generateHeightMap(settings);
+	HeightmapStorage generateHeightMap(settings);
 
 	
 	MeshGenerator::Settings meshSettings;
@@ -65,18 +70,19 @@ int ns::GeneratorInterface::run()
 	DrawableObject3d chunk(mesh);
 	scene_.addEntity(chunk);
 
+	Model model("C:/Users/nicol/OneDrive/Documents/Graphismes/models/chunk/chunk.fbx");
+	DrawableObject3d example(model, glm::vec3(-20, 0, 20), glm::vec3(10));
+	scene_.addEntity(example);
+
 	//DrawableObject3d chunk2(mesh2);
 	//scene_.addEntity(chunk2);
 
 	DirectionalLight sun;
 	scene_.addLight(sun);
 
+	glEnable(GL_CULL_FACE);
+
 	
-	renderer_.settings().bloomIteration = 0;
-
-	glLineWidth(4.f);
-
-	ns::clearConfigFile();
 
 	while (window_.shouldNotClose()) {
 		window_.beginFrame();
@@ -102,12 +108,14 @@ int ns::GeneratorInterface::run()
 		if (window_.key(GLFW_KEY_ESCAPE))
 			window_.setShouldClose(true);
 	}
+	ns::clearConfigFile();
 	return EXIT_SUCCESS;
 }
 
 void ns::GeneratorInterface::debugOptimisationHeightsComputations()
 {
 	std::unordered_map<LengthType, std::unordered_map<LengthType, std::optional<unsigned>>> count;
+
 	for (const auto& pos : heightComputationPos)
 	{
 		if (!count[pos.x][pos.y].has_value())

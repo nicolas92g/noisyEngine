@@ -26,7 +26,7 @@ void ns::Timer::stop()
 
 	if (hasBeenStoped) return;
 	
-	Debug::get() << name << " took " + std::to_string((double)duration.count() * 1e-6) + " ms\n";
+	std::cout << name << " took " + std::to_string((double)duration.count() * 1e-6) + " ms\n";
 	hasBeenStoped = true;
 }
 

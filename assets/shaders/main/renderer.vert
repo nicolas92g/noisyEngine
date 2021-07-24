@@ -36,7 +36,7 @@ void main(){
 
 	uv = inUv;
 	outNormal = normalize(inNormal);
-	fragPos = vec3(model * vec4(inPos, 1));
+	fragPos = vec3(model * vec4(inPos, 1)); 
 
 	vec3 T = normalize(vec3(model * vec4(inTangent, 0.0)));
 	vec3 B;

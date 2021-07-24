@@ -50,6 +50,7 @@ void ns::Debug::render()
 	heapMenu();
 	cameraMenu();
 	scenesMenu();
+	meshDecompositionMenu();
 	End();
 
 	//open the shell
@@ -87,6 +88,7 @@ ns::Debug::Debug()
 	:
 	win_(nullptr),
 	cam_(nullptr),
+	mesh_(),
 	freeId(0),
 	shellMaxChars_(10000),
 	renderer_(nullptr)
@@ -130,6 +132,11 @@ void ns::Debug::removeScene(Scene& scene)
 void ns::Debug::clearScenes()
 {
 	scenes_.clear();
+}
+
+void ns::Debug::setMeshDescription(const Debug::MeshDescription& mesh)
+{
+	mesh_ = mesh;
 }
 
 void ns::Debug::fpsMenu()
@@ -411,10 +418,43 @@ void ns::Debug::rendererMenu()
 		Separator();
 		static glm::vec4 clearColor = ns::getClearColor();
 		Text("clear color"); SameLine();
-		ColorPicker4("##clear color", &clearColor.x);
+		ColorEdit4("##clear color", &clearColor.x);
+		Separator();
+		Text("show normals ");
+		SameLine();
+		Checkbox("##show normals", &renderer_->info_.showNormals);
+		Separator();
 		glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
 	}
 #endif
+}
+
+void ns::Debug::meshDecompositionMenu()
+{
+#ifdef USE_IMGUI 
+	if (mesh_.vertices.size() == 0) return;
+
+	using namespace ImGui;
+
+	if (CollapsingHeader("Mesh Decomposition")) {
+		if (TreeNode("vertices##Mesh decomposition")) {
+			for (size_t i = 0; i < mesh_.vertices.size(); i++)
+			{
+				Text((std::to_string(i) + ": " + to_string(mesh_.vertices[i].position)).c_str());
+			}
+			TreePop();
+		}
+		if (mesh_.indexed and TreeNode("indices##Mesh decomposition")) {
+			for (size_t i = 0; i < mesh_.indices.size(); i++)
+			{
+				Text((std::to_string(i) + ": " + std::to_string(mesh_.indices[i])).c_str());
+			}
+			TreePop();
+		}
+		
+	}
+
+#	endif
 }
 
 const char* ns::Debug::createNewFreeId()

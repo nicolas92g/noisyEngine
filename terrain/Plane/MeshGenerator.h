@@ -4,14 +4,17 @@
 //noisy
 #include <Rendering/Mesh.h>
 #include <configNoisy.hpp>
-#include "HeightmapGenerator.h"
+#include "HeightmapStorage.h"
 
 //stl
 #include <array>
 #include <memory>
 #include <iostream>
 
-namespace ns {
+/**
+ * @brief contain all the classes that are able to generate a deformed plane world
+ */
+namespace ns::Plane {
 
 	class MeshGenerator
 	{
@@ -31,11 +34,11 @@ namespace ns {
 			} normals = Normals::smooth;
 		};
 
-		using Input = HeightmapGenerator::Result;
+		using Input = HeightmapStorage::Result;
 
 	public:
 
-		MeshGenerator(const HeightmapGenerator& heightmapGeneratorUsed, const MeshGenerator::Settings& settings = MeshGenerator::Settings());
+		MeshGenerator(const HeightmapStorage& heightmapGeneratorUsed, const MeshGenerator::Settings& settings = MeshGenerator::Settings());
 		void operator()(const Input& heightmap, Result& result);
 
 		//store a triangle and it's normal
@@ -102,30 +105,34 @@ namespace ns {
 		struct Quad {
 			Quad() :
 				triangle_a(),
-				triangle_b()
+				triangle_b(),
+				triangle_c(),
+				triangle_d()
 			{}
 			Quad(unsigned a, unsigned b, unsigned c, unsigned d) :
-				triangle_a(a, b, c),
-				triangle_b(b, d, c)
+				triangle_a(a, c, b),
+				triangle_d(d, b, c),
+				triangle_b(b, a, d),
+				triangle_c(c, d, a)
 			{}
-			IndexedTriangle triangle_a, triangle_b;
+			IndexedTriangle triangle_a, triangle_b, triangle_c, triangle_d;// the triangle letter is the point where the triangle has a 90 degrees angle the quad is A B D C
 		};
 
 	protected:
 		const Settings settings_;
-		const HeightmapGenerator::Settings heightMapSettings_;
-		const HeightmapGenerator::preComputedValues data_;
+		const HeightmapStorage::Settings heightMapSettings_;
+		const HeightmapStorage::preComputedValues data_;
 
 	protected:
-		void genFlatNormalsMesh(const MeshGenerator::Input& heightmap, Result& result, const MapSizeType& chunkPosition);
-		void genSmoothNormalsMesh(const MeshGenerator::Input& heightmap, Result& result, const MapSizeType& chunkPosition);
+		void genFlatNormalsMesh(const MeshGenerator::Input& heightmap, Result& result, const MapLengthType& chunkPosition);
+		void genSmoothNormalsMesh(const MeshGenerator::Input& heightmap, Result& result, const MapLengthType& chunkPosition);
 
-		glm::vec3 VertexWorldPosition(const MapSizeType& chunkWorldPos, float height, int PrimitiveOffsetX, int PrimitiveOffsetY);
+		glm::vec3 VertexWorldPosition(const MapLengthType& chunkWorldPos, float height, int PrimitiveOffsetX, int PrimitiveOffsetY);
 
-		void fillPositions(ns::BiArray<glm::vec3>& positions, const MeshGenerator::Input& heightmap, const MapSizeType chunkWorldPosition);
+		void fillPositions(ns::BiArray<glm::vec3>& positions, const MeshGenerator::Input& heightmap, const MapLengthType chunkWorldPosition);
 		void fillTriangles(BiArray<MeshGenerator::Quad>& quads, const ns::BiArray<glm::vec3>& positions);
 
-		void checkNeighborsLinesXandZ(const MeshGenerator::Input& heightmap, const MapSizeType chunkWorldPosition);
+		void checkNeighborsLinesXandZ(const MeshGenerator::Input& heightmap, const MapLengthType chunkWorldPosition);
 	};
 }
 

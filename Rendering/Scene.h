@@ -16,6 +16,10 @@ namespace ns {
 			const std::vector<DrawableObject3d*>& stationaries = {},
 			const std::vector<LightBase_*>& lights = std::vector<LightBase_*>(0)
 		);
+		Scene(const Scene& other);
+		Scene(Scene&& other) noexcept;
+		
+
 		void sendLights(const ns::Shader& shader) const;
 		void draw(const ns::Shader& shader) const;
 		void update();
@@ -33,6 +37,11 @@ namespace ns {
 		void addLight(LightBase_& light);
 		void removeLight(LightBase_& light);
 		void addLights(const std::vector<std::shared_ptr<LightBase_>>& lights);
+
+		void operator+=(const Scene& other);
+		void operator=(const Scene& other);
+		void operator=(Scene&& other) noexcept;
+		
 
 	protected:
 		std::vector<DrawableObject3d*> entities_;		//movable Objects

@@ -109,11 +109,11 @@ void main(){
     for(int i = 0; i < dirLightNumber; ++i){
         Lo += CalcDirLight(dirLights[i], F0, V, vec4(1), pbr);
     }
-
+    
     for(int i = 0; i < pointLightNumber; ++i){
         Lo += CalcPointLight(pointLights[i], F0, fragPos, V, pbr);
     }
-
+    
     for(int i = 0; i < spotLightNumber; ++i){
         Lo += CalcSpotLight(spotLights[i], F0, fragPos, V, pbr);
     }
@@ -131,7 +131,7 @@ void main(){
     const float MAX_REFLECTION_LOD = 4.0;
     vec3 prefilteredColor = textureLod(prefilteredEnvironmentMap, R,  pbr.roughness * MAX_REFLECTION_LOD).rgb;
     vec2 brdf  = texture(brdfLutMap, vec2(max(dot(pbr.normal, V), 0.0), pbr.roughness)).rg;
-    vec3 specular = prefilteredColor * (F * brdf.x + brdf.y) * 1;
+    vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
 
     vec3 ambient = (kD * diffuseValue + specular) * pbr.ao;
 
@@ -198,7 +198,7 @@ PixelMaterial getMaterial(){
         ret.normal = calcNormalMapping();
     }
     else{
-        ret.normal = outNormal;
+        ret.normal = normalize(outNormal);
     }
 
     //ambientOcclusionMap

@@ -3,16 +3,16 @@
 
 #include <Utils/BiArray.h>
 
-ns::MeshGenerator::MeshGenerator(const HeightmapGenerator& heightGen, const MeshGenerator::Settings& settings)
+ns::Plane::MeshGenerator::MeshGenerator(const HeightmapStorage& heightGen, const MeshGenerator::Settings& settings)
 	:
 	settings_(settings),
 	data_(heightGen.data_),
 	heightMapSettings_(heightGen.settings_)
 {}
 
-void ns::MeshGenerator::operator()(const MeshGenerator::Input& heightmap, Result& result)
+void ns::Plane::MeshGenerator::operator()(const MeshGenerator::Input& heightmap, Result& result)
 {
-	const MapSizeType chunkWorldPosition = heightMapSettings_.chunkPhysicalSize * (MapSizeType)heightmap.chunk;
+	const MapLengthType chunkWorldPosition = heightMapSettings_.chunkPhysicalSize * (MapLengthType)heightmap.chunk;
 
 	if(settings_.normals == Settings::Normals::flat)
 		genFlatNormalsMesh(heightmap, result, chunkWorldPosition);
@@ -20,7 +20,7 @@ void ns::MeshGenerator::operator()(const MeshGenerator::Input& heightmap, Result
 		genSmoothNormalsMesh(heightmap, result, chunkWorldPosition);
 }
 
-void ns::MeshGenerator::genFlatNormalsMesh(const MeshGenerator::Input& heightmap, Result& result, const MapSizeType& chunkPosition)
+void ns::Plane::MeshGenerator::genFlatNormalsMesh(const MeshGenerator::Input& heightmap, Result& result, const MapLengthType& chunkPosition)
 {
 
 	result.indexed = false;
@@ -57,17 +57,16 @@ void ns::MeshGenerator::genFlatNormalsMesh(const MeshGenerator::Input& heightmap
 	}
 }
 
-void ns::MeshGenerator::genSmoothNormalsMesh(const MeshGenerator::Input& heightmap, Result& result, const MapSizeType& chunkPosition)
+void ns::Plane::MeshGenerator::genSmoothNormalsMesh(const MeshGenerator::Input& heightmap, Result& result, const MapLengthType& chunkPosition)
 {
-	result.primitiveType = GL_LINE_STRIP;
+	result.primitiveType = GL_LINES;
 	result.primitiveType = GL_TRIANGLES;
 	result.indexed = true;
 	
 	const glm::ivec2 size(heightMapSettings_.numberOfPartitions.x + 1, heightMapSettings_.numberOfPartitions.y + 1);
 
 	BiArray<glm::vec3> positions(size + glm::ivec2(2), glm::vec3(1));
-	BiArray<MeshGenerator::Quad> quads(size + glm::ivec2(1), MeshGenerator::Quad(0, 0, 0, 0));
-	BiArray<glm::vec3> normals(size, glm::vec3(1));
+	BiArray<MeshGenerator::Quad> quads(size + glm::ivec2(1), MeshGenerator::Quad(1, 2, 3, 4));
 
 	for (auto& value : positions) {
 		value = glm::vec3(-1);
@@ -81,58 +80,41 @@ void ns::MeshGenerator::genSmoothNormalsMesh(const MeshGenerator::Input& heightm
 	{
 		for (size_t i = 0; i < size.x; i++) 
 		{
-			result.vertices.emplace(result.vertices.begin() + TWO_DIM(i,j, size.x), positions.value(i + 1, j + 1));
+			const glm::vec3 normal =
+				quads.value(i, j).triangle_d.normal +
+				quads.value(i + 1, j).triangle_c.normal +
+				quads.value(i, j + 1).triangle_b.normal +
+				quads.value(i + 1, j + 1).triangle_a.normal;
+				
+			result.vertices.emplace(result.vertices.begin() + TWO_DIM(i,j, size.x), positions.value(i + 1, j + 1), normal);
 		}
 	}
 
 	result.indices.resize(((size_t)size.x - 1) * ((size_t)size.y - 1) * 6);
 
+
+	unsigned index = 0;
 	for (int j = 0; j < size.y - 1; j++)
 	{
 		for (int i = 0; i < size.x - 1; i++)
 		{
-			const int index = TWO_DIM(i, j, size.x) * 6;
+			const unsigned a = TWO_DIM(i + 0, j + 0, size.x);
+			const unsigned b = TWO_DIM(i + 1, j + 0, size.x);
+			const unsigned c = TWO_DIM(i + 0, j + 1, size.x);
+			const unsigned d = TWO_DIM(i + 1, j + 1, size.x);
 
-			result.indices.emplace(result.indices.begin() + index + 0, TWO_DIM(i + 0, j + 0, size.x));
-			result.indices.emplace(result.indices.begin() + index + 1, TWO_DIM(i + 1, j + 0, size.x));
-			result.indices.emplace(result.indices.begin() + index + 2, TWO_DIM(i + 0, j + 1, size.x));
-			result.indices.emplace(result.indices.begin() + index + 3, TWO_DIM(i + 1, j + 0, size.x));
-			result.indices.emplace(result.indices.begin() + index + 4, TWO_DIM(i + 1, j + 1, size.x));
-			result.indices.emplace(result.indices.begin() + index + 5, TWO_DIM(i + 0, j + 1, size.x));
+			result.indices.emplace(result.indices.begin() + index + 0, a);
+			result.indices.emplace(result.indices.begin() + index + 1, c);
+			result.indices.emplace(result.indices.begin() + index + 2, b);
+			result.indices.emplace(result.indices.begin() + index + 3, b);
+			result.indices.emplace(result.indices.begin() + index + 4, c);
+			result.indices.emplace(result.indices.begin() + index + 5, d);
+
+			index += 6;
 		}
 	}
 
-
-
-
-	/*for (size_t j = 0; j < quads.y(); j++)
-	{
-		for (size_t i = 0; i < quads.x(); i++)
-		{
-			if ((i == 0 and j == 0)) continue;
-			if ((i == 0 and j == quads.y() - 1)) continue;
-			if ((i == quads.x() - 1 and j == 0)) continue;
-			if ((i == quads.x() - 1 and j == quads.y() - 1)) continue;
-
-			result.vertices.emplace_back(positions[quads.value(i, j).triangle_a.a], quads.value(i, j).triangle_a.normal);
-			result.vertices.emplace_back(positions[quads.value(i, j).triangle_a.b], quads.value(i, j).triangle_a.normal);
-			result.vertices.emplace_back(positions[quads.value(i, j).triangle_a.b], quads.value(i, j).triangle_a.normal);
-			result.vertices.emplace_back(positions[quads.value(i, j).triangle_a.c], quads.value(i, j).triangle_a.normal);
-			result.vertices.emplace_back(positions[quads.value(i, j).triangle_a.c], quads.value(i, j).triangle_a.normal);
-			result.vertices.emplace_back(positions[quads.value(i, j).triangle_a.a], quads.value(i, j).triangle_a.normal);
-
-			
-			result.vertices.emplace_back(positions[quads.value(i, j).triangle_b.a], quads.value(i, j).triangle_b.normal);
-			result.vertices.emplace_back(positions[quads.value(i, j).triangle_b.b], quads.value(i, j).triangle_b.normal);
-			result.vertices.emplace_back(positions[quads.value(i, j).triangle_b.b], quads.value(i, j).triangle_b.normal);
-			result.vertices.emplace_back(positions[quads.value(i, j).triangle_b.c], quads.value(i, j).triangle_b.normal);
-			result.vertices.emplace_back(positions[quads.value(i, j).triangle_b.c], quads.value(i, j).triangle_b.normal);
-			result.vertices.emplace_back(positions[quads.value(i, j).triangle_b.a], quads.value(i, j).triangle_b.normal);
-
-		}
-	}*/
-
-	for (size_t i = 0; i < positions.x(); i++)
+	/*for (size_t i = 0; i < positions.x(); i++)
 	{
 		Debug::get() << i << " : \t";
 		for (size_t j = 0; j < positions.y(); j++)
@@ -140,16 +122,16 @@ void ns::MeshGenerator::genSmoothNormalsMesh(const MeshGenerator::Input& heightm
 			Debug::get() << to_string((glm::ivec3)positions.value(i, j)) << "\t\t";
 		}
 		Debug::get() << '\n';
-	}
+	}*/
 	Debug::get().log();
 }
 
-glm::vec3 ns::MeshGenerator::VertexWorldPosition(const MapSizeType& chunkPos, float height, int x, int y)
+glm::vec3 ns::Plane::MeshGenerator::VertexWorldPosition(const MapLengthType& chunkPos, float height, int x, int y)
 {
 	return glm::vec3( chunkPos.x + x * data_.primitiveSize.x, height, chunkPos.y + y * data_.primitiveSize.y);
 }
 
-void ns::MeshGenerator::fillPositions(ns::BiArray<glm::vec3>& positions, const MeshGenerator::Input& heightmap, const MapSizeType chunkPosition)
+void ns::Plane::MeshGenerator::fillPositions(ns::BiArray<glm::vec3>& positions, const MeshGenerator::Input& heightmap, const MapLengthType chunkPosition)
 {
 	const glm::ivec2 size(heightMapSettings_.numberOfPartitions.x + 1, heightMapSettings_.numberOfPartitions.y + 1);
 
@@ -174,7 +156,7 @@ void ns::MeshGenerator::fillPositions(ns::BiArray<glm::vec3>& positions, const M
 	}
 }
 
-void ns::MeshGenerator::fillTriangles(BiArray<MeshGenerator::Quad>& quads, const ns::BiArray<glm::vec3>& positions)
+void ns::Plane::MeshGenerator::fillTriangles(BiArray<MeshGenerator::Quad>& quads, const ns::BiArray<glm::vec3>& positions)
 {
 #	ifndef NDEBUG
 	//check triangles array size
@@ -186,18 +168,24 @@ void ns::MeshGenerator::fillTriangles(BiArray<MeshGenerator::Quad>& quads, const
 	{
 		for (size_t i = 0; i < quads.x(); i++)
 		{
-			quads.value(i, j).triangle_a = IndexedTriangle(positions.index(i, j), positions.index(i + 1, j), positions.index(i, j + 1));
-			quads.value(i, j).triangle_b = IndexedTriangle(positions.index(i + 1, j), positions.index(i + 1, j + 1), positions.index(i, j + 1));
+			//create the triangles
+			quads.emplace(i, j, Quad(positions.index(i, j), positions.index(i + 1, j), positions.index(i, j + 1), positions.index(i + 1, j + 1)));
+
+			//generate the normals of the triangles
+			quads.value(i, j).triangle_a.genNormal(positions.data());
+			quads.value(i, j).triangle_b.genNormal(positions.data());
+			quads.value(i, j).triangle_c.genNormal(positions.data());
+			quads.value(i, j).triangle_d.genNormal(positions.data());
 		}
 	}
 }
 
-void ns::MeshGenerator::checkNeighborsLinesXandZ(const MeshGenerator::Input& heightmap, const MapSizeType chunkPosition)
+void ns::Plane::MeshGenerator::checkNeighborsLinesXandZ(const MeshGenerator::Input& heightmap, const MapLengthType chunkPosition)
 {
 	const glm::ivec2 size(heightMapSettings_.numberOfPartitions.x + 1, heightMapSettings_.numberOfPartitions.y + 1);
 
 	//check left
-	HeightmapGenerator::NeighborChunkLine* line = heightmap.neighbors[HeightmapGenerator::Result::left];
+	HeightmapStorage::NeighborChunkLine* line = heightmap.neighbors[HeightmapStorage::Result::left];
 	if (!line->xzComputed) {
 		for (size_t j = 0; j < size.y; j++)
 		{
@@ -207,7 +195,7 @@ void ns::MeshGenerator::checkNeighborsLinesXandZ(const MeshGenerator::Input& hei
 	}
 
 	//check right
-	line = heightmap.neighbors[HeightmapGenerator::Result::right];
+	line = heightmap.neighbors[HeightmapStorage::Result::right];
 	if (!line->xzComputed){
 		for (size_t j = 0; j < size.y; j++)
 		{
@@ -217,7 +205,7 @@ void ns::MeshGenerator::checkNeighborsLinesXandZ(const MeshGenerator::Input& hei
 	}
 
 	//check bottom
-	line = heightmap.neighbors[HeightmapGenerator::Result::bottom];
+	line = heightmap.neighbors[HeightmapStorage::Result::bottom];
 	if (!line->xzComputed) {
 		for (size_t i = 0; i < size.x; i++)
 		{
@@ -227,7 +215,7 @@ void ns::MeshGenerator::checkNeighborsLinesXandZ(const MeshGenerator::Input& hei
 	}
 
 	//check top
-	line = heightmap.neighbors[HeightmapGenerator::Result::top];
+	line = heightmap.neighbors[HeightmapStorage::Result::top];
 	if (!line->xzComputed) {
 		for (size_t i = 0; i < size.x; i++)
 		{
