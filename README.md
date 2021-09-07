@@ -9,8 +9,7 @@
 
 <H3>Libraries used</H3>
 
-- <a href="https://glad.dav1d.de/">glad 4.3 core version debug</a>
-- <a href="https://glad.dav1d.de/">glad 4.3 core version release</a>
+- <a href="https://glad.dav1d.de/">glad 4.3 core</a>
 - <a href="https://www.glfw.org/">glfw</a>
 - <a href="https://github.com/kthohr/gcem">gcem</a>
 - <a href="https://github.com/jbeder/yaml-cpp">yaml-cpp</a>
@@ -25,9 +24,8 @@
 <H5>Majors Implementations needed</H5>
 
 - animations
-- physX
+- physX (collision and physics simulation)
 - transparent material support
-- dir lights shadows
 
 
 
