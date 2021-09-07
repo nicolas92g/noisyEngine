@@ -12,6 +12,9 @@
 #include <Utils/utils.h>
 
 namespace ns {
+	/**
+	 * @brief Debug 2d interface made with imgui
+	 */
 	class Debug : public std::stringstream
 	{
 	public:
@@ -35,7 +38,7 @@ namespace ns {
 		void log();
 		static Debug& get();
 
-#		ifndef NDEBUG
+#		ifdef USE_IMGUI
 		static size_t memoryHeapAllocated;
 		static size_t memoryHeapFreed;
 #		endif
@@ -53,8 +56,13 @@ namespace ns {
 		std::vector<ns::Scene*> scenes_;
 
 		int shellMaxChars_;
+		float texturesSize_;
 		int freeId;
+		char textureFileNameBuffer[100];
+		float maxEmission_;
 		const char* createNewFreeId();
+
+		int maxTextureSize_;
 	protected:
 		void fpsMenu();
 		void windowMenu();
@@ -72,7 +80,8 @@ namespace ns {
 		void inputGeometricObject3d(GeometricObject3d& obj);
 		void inputDrawableObject3d(DrawableObject3d& obj);
 
-		void MaterialComponentInput(std::optional<ns::TextureView>& texture, float& value);
+		void buttonAddTexture(std::optional<ns::TextureView>& tex, ns::Material& mat);
+
 		void inputMaterial(Material& mat);
 	};
 }

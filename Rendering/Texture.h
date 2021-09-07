@@ -6,6 +6,8 @@
 
 #define NS_EMBEMBEDDED_FILEPATH_NAME "<embedded>"
 
+#define NS_TEXTURE_VIEW_STORE_POINTER
+
 namespace ns {
 	class TextureView;
 	class Texture
@@ -15,11 +17,13 @@ namespace ns {
 		Texture(aiTexture* const assimpTexture);
 
 		bool isLoaded() const;
+		void reload(const std::string& textureFilePath);
 		
 		Texture(Texture&) = delete;
 		Texture& operator=(Texture&) = delete;
 		bool operator==(const TextureView& textureView) const;
 
+		
 		~Texture();
 
 		const int width() const;
@@ -30,6 +34,9 @@ namespace ns {
 		void bind() const;
 
 	protected:
+		void load();
+		void destroy();
+
 		unsigned int id_;
 		int width_;
 		int height_;
@@ -47,18 +54,21 @@ namespace ns {
 
 	class TextureView {
 	public:
-		TextureView(const Texture& textureToSee);
-		void operator=(const Texture& textureToSee);
+		TextureView(Texture& textureToSee);
+		void operator=(Texture& textureToSee);
 		bool operator==(const Texture& texture);
 
 		void bind() const;
-		const int width() const;
-		const int height() const;
+
+#		ifdef NS_TEXTURE_VIEW_STORE_POINTER
+		const std::string& filepath() const { return ptr_->filePath_; }
+#		endif
 
 	protected:
 		unsigned int textureId_;
-		int width_;
-		int height_;
+#		ifdef NS_TEXTURE_VIEW_STORE_POINTER
+		ns::Texture* ptr_;
+#		endif
 
 		friend class Texture;
 		friend class Debug;

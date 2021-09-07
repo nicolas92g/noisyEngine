@@ -8,7 +8,6 @@
 #include "Object3d.h"
 #include "Scene.h"
 #include "SkyMapRenderer.h"
-#include "PostProcessingLayer.h"
 #include <configNoisy.hpp>
 
 //stl
@@ -26,8 +25,11 @@ namespace ns {
 			spotLightsMax = 50;
 			environmentMap = envHdrMapPath;
 			FXAA = true;
-			bloomIteration = 5;
+			bloomIteration = 3;
 			showNormals = false;
+			renderSkybox = false;
+			shadowPrecision = 1000;
+			shadowSize = 100;
 		}
 
 		unsigned int directionalLightsMax;
@@ -36,7 +38,11 @@ namespace ns {
 		std::string environmentMap;
 		bool FXAA;
 		int bloomIteration;
+		float bloomThreshold;
 		bool showNormals;
+		bool renderSkybox;
+		int shadowPrecision;
+		int shadowSize;
 	};
 
 	class Renderer3d
@@ -54,8 +60,8 @@ namespace ns {
 		void setScene(Scene& scene);
 		Renderer3dCreateInfo& settings();
 
-		void importFromYAML(const std::string filename);
-		void exportIntoYAML(const std::string filename);
+		void importFromYAML();
+		void exportIntoYAML();
 
 	protected:
 		Renderer3dCreateInfo info_;
@@ -75,13 +81,13 @@ namespace ns {
 		void sendFixDataToShader() const;
 
 		//cube VAO
-		unsigned int cube_;
-		unsigned int cubeBuffer_;
+		GLuint cube_;
+		GLuint cubeBuffer_;
 		void createCube();
 
 		//plane VAO
-		unsigned int plane_;
-		unsigned int planeBuffer_;
+		GLuint plane_;
+		GLuint planeBuffer_;
 		void createPlaneMesh();
 
 		void initPhysicallyBasedRenderingSystem(const std::string& envHdrMapPath);
@@ -91,6 +97,7 @@ namespace ns {
 		Camera& cam_;
 		Window& win_;
 		Scene& scene_;
+		glm::ivec2 previousResolution_;
 
 		std::shared_ptr<std::thread> tickThread_;
 		std::mutex sceneMutex_;
@@ -100,10 +107,51 @@ namespace ns {
 
 		void setDynamicUniforms(ns::Shader& shader) const;
 
+		//shadows
+		uint16_t shadowMapRes_;
+		GLuint shadowMap_;
+		GLuint shadowFramebuffer_;
+		glm::mat4 lightMatrix_;
+		std::unique_ptr<ns::Shader> shadowShader_;
+
+		void initShadowPipeline();
+		void updateDynamicShadow(const glm::vec3& position, const glm::vec3& lightDir);
+
 		//post postprocessing
-		std::unique_ptr<PostProcessingLayer> postProcess;
-		std::unique_ptr<Shader> gaussianBlur;
-		const unsigned gaussianBlurXWorkSize = 32 * 10;
+		std::unique_ptr<ns::Shader> screenShader_;
+		std::unique_ptr<ns::Shader> bloomPrefilteringStage_;
+		std::unique_ptr<ns::Shader> bloomDownsamplingStage_;
+		std::unique_ptr<ns::Shader> bloomUpsamplingStage_;
+		std::unique_ptr<ns::Shader> FinalPostProcessingStage_;
+		
+
+		struct Image2d {
+			GLuint id;
+			glm::ivec2 size;
+		};
+
+		struct DoubleImage {
+			GLuint id;
+			GLuint id2;
+			glm::ivec2 size;
+		};
+
+		Image2d bloomThresholdFiltered_;		//prefiltering and downsampled
+		std::vector<DoubleImage> bloomDownsampled_;	//all the downsampled textures
+		std::vector<Image2d> bloomUpsampled_;	//all the upsampled textures
+		GLuint result_;							//texture with the window resolution
+		int previousBloomIterationSetting_;
+
+		void initBloomPipeline();
+		void resizeBloomPipeline();
+		void destroyBloomPipeline();
+
+		//custom framebuffer
+		GLuint framebuffer_;
+		GLuint colorAttachement_;
+		GLuint depthAttachement_;
+
+		void createFramebuffer();
 
 
 		SkyMapRenderer skyBox;

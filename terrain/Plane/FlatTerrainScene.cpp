@@ -3,33 +3,123 @@
 
 std::array<std::vector<ns::GridPositionType>, ns::maximunRenderDistance> ns::Plane::FlatTerrainScene::searchingOrder = ns::Plane::FlatTerrainScene::getOrder();
 
-ns::Plane::FlatTerrainScene::FlatTerrainScene(const Settings& settings, HeightmapStorage& heightMapGenerator)
+ns::Plane::FlatTerrainScene::FlatTerrainScene(const Settings& settings, const HeightMapGenerator& function)
 	:
 	settings_(settings),
-	heightGen_(heightMapGenerator),
-	meshGen_(heightGen_),
-	numberOfChunks_(0)
+	heightStorage_(HeightmapStorage::Settings(function, settings.chunkPhysicalSize, settings.numberOfPartitions)),
+	meshGen_(heightStorage_),
+	numberOfChunks_(0),
+	renderDistance_(8),
+	maxChunksLoadingThreads_(std::max(std::thread::hardware_concurrency(), 1U)),
+	scene_(DirectionalLight::nullLight())
 {
-	chunks_ = std::make_unique<BiArray<Chunk>>(terrainArraySizeNeeded(settings_.load().renderDistance));
+	chunks_ = std::make_unique<BiArray<Chunk>>(terrainArraySizeNeeded(renderDistance_));
+
+	//initialize biarray
+	centralChunk_ = GridPositionType(0);
+	originChunk_ = GridPositionType(renderDistance_ * -1);
+
+	//start searching thread
+	stopAndRestartSearchingThread();
+
+	importFromYAML();
 }
 
-void ns::Plane::FlatTerrainScene::update(GridPositionType& centerPosition)
+ns::Plane::FlatTerrainScene::~FlatTerrainScene()
+{
+	//Stop searchingThread if it is running
+	stopSearchingThread_ = true;	//request the thread to stop
+
+	exportIntoYAML();
+
+	searchingThread_->join();		//wait for it to stop
+}
+
+void ns::Plane::FlatTerrainScene::update(const GridPositionType& centerPosition)
 {
 	//check if the chunk loading condition has changed
 	if (centerPosition != centralChunk_.load()) {
 		stopAndRestartSearchingThread();
 	}
+
+	std::scoped_lock chunksDataLock(chunksDataMutex_);
+
+	if(chunksData_.size())
+		dout << "adding " << chunksData_.size() << " meshes !\n";
+
+	for (const auto& data : chunksData_)
+	{
+		auto& chunk = getChunk(data.position);
+
+		if (chunk.wasProcessed) continue;
+		chunk.position = data.position;
+
+		MeshConfigInfo info;
+		info.primitive = data.meshData.primitiveType;
+		info.indexedVertices = data.meshData.indexed;
+
+		chunk.mesh = std::make_shared<ns::Mesh>(data.meshData.vertices, data.meshData.indices, Material::getDefault(), info);
+		chunk.object = std::make_shared<ns::DrawableObject3d>(*chunk.mesh);
+
+		scene_.addStationary(*chunk.object);
+		chunk.wasProcessed = true;
+	}
+
+	chunksData_.clear();
 }
 
-void ns::Plane::FlatTerrainScene::setScene(Scene& scene)
+ns::Scene& ns::Plane::FlatTerrainScene::lockScene()
 {
-	scene_ = &scene;
+	sceneMutex_.lock();
+	return scene_;
+}
+
+void ns::Plane::FlatTerrainScene::unlockScene()
+{
+	sceneMutex_.unlock();
+}
+
+void ns::Plane::FlatTerrainScene::setRenderDistance(uint16_t renderDistance)
+{
+	renderDistance_ = renderDistance;
+}
+
+void ns::Plane::FlatTerrainScene::setMaxOfLoadingThreads(uint16_t maxThreads)
+{
+	maxChunksLoadingThreads_ = maxThreads;
+}
+
+uint16_t ns::Plane::FlatTerrainScene::renderDistance() const
+{
+	return renderDistance_.load();
+}
+
+uint16_t ns::Plane::FlatTerrainScene::maxLoadingThreads() const
+{
+	return maxChunksLoadingThreads_.load();
+}
+
+void ns::Plane::FlatTerrainScene::importFromYAML()
+{
+	try {
+		renderDistance_ = conf["planeTerrain"]["renderdistance"].as<int>();
+		maxChunksLoadingThreads_ = conf["planeTerrain"]["maxThreads"].as<int>();
+	}
+	catch (...) {
+
+	}
+}
+
+void ns::Plane::FlatTerrainScene::exportIntoYAML()
+{
+	conf["planeTerrain"]["renderdistance"] = renderDistance_.load();
+	conf["planeTerrain"]["maxThreads"] = maxChunksLoadingThreads_.load();
 }
 
 void ns::Plane::FlatTerrainScene::checkRenderDistanceCapacity()
 {
-	const glm::ivec2 minSize = terrainArraySizeNeeded(settings_.load().renderDistance);
-
+	const glm::ivec2 minSize = terrainArraySizeNeeded(renderDistance_);
+	
 	if (chunks_->x() < minSize.x or chunks_->y() < minSize.y) {
 		const BiArray<Chunk> copy(*chunks_);
 	
@@ -45,17 +135,23 @@ glm::ivec2 ns::Plane::FlatTerrainScene::terrainArraySizeNeeded(unsigned renderDi
 
 void ns::Plane::FlatTerrainScene::searchingThreadFunction(FlatTerrainScene* ptr)
 {
+	dout << "started searching...\n";
 	FlatTerrainScene& object = *ptr;
-	for (unsigned dst = 0; dst <= object.settings_.load().renderDistance; ++dst)
+	for (unsigned dst = 0; dst <= object.renderDistance_; ++dst)
 	{
 		for (size_t i = 0; i < searchingOrder[dst].size(); i++)
 		{
+			
 			//check if this thread receive a close request
 			if (object.stopSearchingThread_.load()) return;
 
-			//wait until the number of loading threads in less than the fixed limit
-			if (object.loadingFutures_.size() >= object.settings_.load().maxChunksLoadingThreads) {
-				object.loadingFutures_.erase(object.loadingFutures_.begin()); //wait for the oldest thread to finish by calling his future's destructor
+			{
+				std::scoped_lock lock(object.loadingFuturesMutex_);
+
+				//wait until the number of loading threads in less than the fixed limit
+				if (object.loadingFutures_.size() >= object.maxChunksLoadingThreads_) {
+					object.loadingFutures_.erase(object.loadingFutures_.begin()); //wait for the oldest thread to finish by calling his future's destructor
+				}
 			}
 
 			const GridPositionType& chunkPos = searchingOrder[dst][i];
@@ -64,10 +160,32 @@ void ns::Plane::FlatTerrainScene::searchingThreadFunction(FlatTerrainScene* ptr)
 			//if the chunk was already loaded or is currently loading
 			if (chunk.wasProcessed) continue;
 
+			std::scoped_lock lock(object.loadingFuturesMutex_);
+
 			//launch loading thread
 			object.loadingFutures_.emplace_back(std::async(std::launch::async, &loadingThreadFunction, &object, chunkPos));
 		}
 	}
+}
+
+void ns::Plane::FlatTerrainScene::loadingThreadFunction(FlatTerrainScene* object, ns::GridPositionType chunk)
+{
+	dout << "loading chunk " << to_string(chunk) << '\n';
+	ChunkToCreate ret;
+	ret.position = chunk;
+	auto heightmap = object->heightStorage_(chunk);
+
+	object->meshGen_(*heightmap, ret.meshData);
+
+	std::scoped_lock chunkDataProtection(object->chunksDataMutex_);
+	object->chunksData_.emplace_back(ret);
+}
+
+void ns::Plane::FlatTerrainScene::moveChunkArray(const GridPositionType& newCentralChunk)
+{
+	ns::BiArray<Chunk> copy(*chunks_);
+
+
 }
 
 void ns::Plane::FlatTerrainScene::stopAndRestartSearchingThread()
@@ -80,6 +198,7 @@ void ns::Plane::FlatTerrainScene::stopAndRestartSearchingThread()
 		stopSearchingThread_ = false;	//remove the stop request for the next thread
 	}
 
+
 	//create or recreate the thread object
 	searchingThread_ = std::make_unique<std::thread>(&searchingThreadFunction, this);
 }
@@ -88,16 +207,6 @@ ns::Plane::FlatTerrainScene::Chunk& ns::Plane::FlatTerrainScene::getChunk(const 
 {
 	GridPositionType location = gridPos - originChunk_.load();
 	return chunks_->value(location.x, location.y);
-}
-
-void ns::Plane::FlatTerrainScene::loadingThreadFunction(FlatTerrainScene* object, ns::GridPositionType chunk)
-{
-
-	auto heightmap = object->heightGen_(chunk);
-
-	MeshGenerator::Result meshDescription;
-	object->meshGen_(*heightmap, meshDescription);
-
 }
 
 std::array<std::vector<ns::GridPositionType>, ns::maximunRenderDistance> ns::Plane::FlatTerrainScene::getOrder()

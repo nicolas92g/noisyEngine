@@ -12,7 +12,7 @@ ns::Camera::Camera(const vec3& pos, float pitch, float yaw, float fov)
 	yaw_ = yaw;
 	fov_ = fov;
 	zNear_ = 0.1f;
-	zFar_ = 100.0f;
+	zFar_ = 400.0f;
 	upDirection_ =  vec3(0,1,0);
 
 	//just to initalize vars

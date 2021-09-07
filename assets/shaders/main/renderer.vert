@@ -22,6 +22,10 @@ out vec3 outNormal;
 out vec3 fragPos;
 out mat3 TBN;
 
+//shadows
+out vec4 lightFragPos;
+uniform mat4 lightSpaceMatrix;
+
 void main(){
 	const mat4 animation = mat4(1);
 	//bones[inBonesIDs[0]] * inWeights[0] +
@@ -51,8 +55,8 @@ void main(){
 	{
 		B = normalize(vec3(model * vec4(inBitangent, 0.0)));
 	}
-	
-	
 
     TBN = mat3(T, B, N);
+
+	lightFragPos = lightSpaceMatrix * vec4(fragPos, 1) ;
 }

@@ -6,12 +6,12 @@
 #define MAX_SPOT_LIGHTS 50
 
 layout(location = 0) out vec4 outColor;
-layout(location = 1) out vec4 BrightColor;
 
 in vec2 uv;
 in vec3 outNormal;
 in vec3 fragPos;
 in mat3 TBN;
+in vec4 lightFragPos;
 
 uniform struct DirLight {
     vec3 direction;
@@ -58,6 +58,7 @@ uniform struct Material{
 	float metallic;
 
     sampler2D emissionMap;
+    float emissionStrength;
     vec3 emission;
 
 	sampler2D normalMap;
@@ -80,6 +81,7 @@ uniform vec3 camPos;
 uniform samplerCube irradianceMap;
 uniform samplerCube prefilteredEnvironmentMap;
 uniform sampler2D brdfLutMap;
+uniform sampler2D shadowMap;
 
 float DistributionGGX(vec3 N, vec3 H, float a);
 float GeometrySchlickGGX(float NdotV, float k);
@@ -92,6 +94,7 @@ vec3 CalcDirLight(DirLight light, vec3 F0, vec3 viewDir, vec4 lightFragmentPosit
 vec3 CalcPointLight(PointLight light, vec3 F0, vec3 fragPos, vec3 viewDir, PixelMaterial pbr);
 vec3 CalcSpotLight(SpotLight spotLight, vec3 F0, vec3 fragPos, vec3 viewDir, PixelMaterial pbr);
 vec3 calcNormalMapping();
+float calcShadow(vec4 lightFP, vec3 normal, vec3 lightDir);
 
 void main(){
     PixelMaterial pbr = getMaterial();
@@ -136,15 +139,8 @@ void main(){
     vec3 ambient = (kD * diffuseValue + specular) * pbr.ao;
 
     vec3 color = ambient + Lo + pbr.emission;
-    outColor = vec4(vec3(color), pbr.alpha);//hdr output
+    outColor = vec4(color, pbr.alpha);//hdr output
 
-    //Bright Color calculation
-    float brightness = dot(outColor.rgb, vec3(0.2126, 0.7152, 0.0722));
-    if(brightness > 1){
-        BrightColor = vec4(outColor.rgb * min(brightness - 0.97, 1), 1.0);
-    }
-    else
-        BrightColor = vec4(0.0, 0.0, 0.0, 1.0);
 }
 
 vec3 gammaCorrect(vec3 value){
@@ -187,7 +183,7 @@ PixelMaterial getMaterial(){
 
     ///emission
     if(mat.hasEmissionMap){
-        ret.emission = texture(mat.emissionMap, uv).rgb;
+        ret.emission = texture(mat.emissionMap, uv).rgb * mat.emissionStrength;
     }
     else{
         ret.emission = mat.emission;
@@ -236,7 +232,7 @@ vec3 CalcDirLight(DirLight light, vec3 F0, vec3 viewDir, vec4 lightFragmentPosit
         
     float NdotL = max(dot(pbr.normal, LightDir), 0.0);  
     
-    float shadow = 0.1;//calcShadow(lightFragPos, pbr.normal, LightDir);
+    float shadow = calcShadow(lightFragPos, pbr.normal, LightDir);
 
     return (1.0 - shadow) * ((kD * pbr.albedo / PI + specular) * radiance * NdotL);
 }
@@ -289,6 +285,47 @@ vec3 calcNormalMapping(){
     return normalize(TBN * ((texture(mat.normalMap, uv).rgb) * 2.0 - 1.0));
 }
 
+float calcShadow(vec4 lightFP, vec3 normal, vec3 lightDir){
+    // perform perspective divide
+    vec3 projCoords = lightFP.xyz / lightFP.w;
+    // transform to [0,1] range
+    projCoords = projCoords * 0.5 + 0.5;
+
+    //test if the fragment is in the texture and can be determine
+    if(projCoords.z > 1.0)
+        return 0.0;
+    // get closest depth value from light's perspective (using [0,1] range fragPosLight as coords)
+    const float closestDepth = texture(shadowMap, projCoords.xy).r; 
+    // get depth of current fragment from light's perspective
+    const float currentDepth = projCoords.z;
+    
+    const float bias = .005;//max(0.05 * (1.0 - dot(normal, lightDir)), 0.005);
+
+    float shadow = 0.0;
+    vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
+    for(int x = -1; x <= 1; ++x)
+    {
+        for(int y = -1; y <= 1; ++y)
+        {
+            float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texelSize).r; 
+            if (currentDepth - bias > pcfDepth){
+                shadow += 1.0 / 9.0;
+            }
+        }    
+    }
+
+    //smooth limits
+    const float transitionSize = .05;
+
+    if(projCoords.y < transitionSize){
+        shadow *= projCoords.y / transitionSize;
+    }
+    if(projCoords.x < transitionSize){
+        shadow *= projCoords.x / transitionSize;
+    }
+    return shadow;
+}
+
 //----------------------------------------------
 //              pbr functions
 //----------------------------------------------
@@ -319,4 +356,4 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
 vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
 {
     return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(max(1.0 - cosTheta, 0.0), 5.0);
-}  
+}

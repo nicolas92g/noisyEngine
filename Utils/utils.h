@@ -5,6 +5,7 @@
 #include <ofbx.h>
 #include "DebugLayer.h"
 #include <glad/glad.h>
+#include "yamlConverter.h"
 
 
 namespace ns {
@@ -26,5 +27,9 @@ namespace ns {
 	void clearConfigFile();
 	glm::vec4 getClearColor();
 	void SetupImGuiStyle(bool bStyleDark_, float alpha_);
-}
+	void saveConfiguration();
 
+	bool isFileExist(const std::string& filepath);
+
+	extern YAML::Node conf;
+}

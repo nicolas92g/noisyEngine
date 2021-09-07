@@ -1,7 +1,14 @@
+/*****************************************************************//**
+ * \file   DebugLayer.cpp
+ * \brief  Debug 2d interface made with dear imgui 
+ * 
+ * \author Nicolas Guillot
+ * \date   September 2021
+ *********************************************************************/
+
 #include "DebugLayer.h"
 
 #include <vector>
-#include <deque>
 #include <yaml-cpp/yaml.h>
 #include <Utils/utils.h>
 
@@ -91,9 +98,11 @@ ns::Debug::Debug()
 	mesh_(),
 	freeId(0),
 	shellMaxChars_(10000),
-	renderer_(nullptr)
-{
-}
+	renderer_(nullptr),
+	texturesSize_(100),
+	maxEmission_(10),
+	maxTextureSize_(1024)
+{}
 
 void ns::Debug::setCamera(Camera& cam)
 {
@@ -337,26 +346,43 @@ void ns::Debug::scenesMenu()
 			static std::string index;
 			index = std::to_string(i + 1);
 
+			if (TreeNode("settings")) {
+				Text("textures display size :");
+				SliderFloat("##texture size", &texturesSize_, 10, 1000);
+
+				Text("maximun emission input slider :");
+				SliderFloat("##maxEmission", &maxEmission_, 1, 100);
+
+				Text("texture relative file name : ");
+				InputText("##texturefilenameinput", textureFileNameBuffer, 100);
+
+				TreePop();
+			}
+
 			if (TreeNode(("scene " + index).c_str())) {
 
 				if (TreeNode(("entities ##" + index).c_str())) {
 					
-					for (DrawableObject3d* const obj : scenes_[i]->entities_)
+					for (DrawableObject3d* obj : scenes_[i]->entities_)
 					{
 						Separator();
 						if (TreeNode(obj->name().c_str())) {
-							Text("3d values : ");
+							Separator();
 							inputDrawableObject3d(*obj);
 
-							Model& model = *dynamic_cast<Model*>(obj);
-							if (&model) {
-								Text("mesh materials :");
+							Model* model = dynamic_cast<Model*>(&obj->model_);
+							if (model) {
+								Separator();
 								
-								for (auto& mesh : model.meshes_) {
-									BulletText(("mesh " + mesh->info_.name).c_str());
-									inputMaterial(mesh->material_);
+								for (auto& mesh : model->meshes_) {
+									if (TreeNode(("mesh '" + mesh->info_.name + "' material").c_str())) {
+										inputMaterial(mesh->material_);
+										TreePop();
+									}
+									Separator();
 								}
-									
+								
+
 							}
 							
 							
@@ -398,19 +424,28 @@ void ns::Debug::rendererMenu()
 #ifdef USE_IMGUI 
 	if (renderer_ == nullptr) return;
 
+	static bool getMaxTextureSize = false;
+	if (!getMaxTextureSize) {
+		glGetIntegerv(GL_MAX_TEXTURE_BUFFER_SIZE, &maxTextureSize_);
+		maxTextureSize_ = sqrt(maxTextureSize_);
+		getMaxTextureSize = true;
+	}
+
 	using namespace ImGui;
 
 	if (CollapsingHeader("Renderer Settings")) {
-		Separator();
 		Text("enable FXAA");
 		SameLine();
 		Checkbox("##FXAA", &renderer_->info_.FXAA);
 		Separator();
 		Text("Bloom iterations");
 		SameLine();
-		SliderInt("##bloom it", &renderer_->info_.bloomIteration, 0, 20);
+		SliderInt("##bloom it", &renderer_->info_.bloomIteration, 0, 8);
 		Separator();
-		static int lineWidth = 4;
+		Text("bloom threshold"); SameLine();
+		SliderFloat("##bloom threshold", &renderer_->info_.bloomThreshold, .1f, 10.f);
+		Separator();
+		static int lineWidth = 1;
 		Text("line width"); 
 		SameLine();
 		SliderInt("##line width", &lineWidth, 1, 10);
@@ -420,10 +455,19 @@ void ns::Debug::rendererMenu()
 		Text("clear color"); SameLine();
 		ColorEdit4("##clear color", &clearColor.x);
 		Separator();
-		Text("show normals ");
-		SameLine();
+		Text("show normals "); SameLine();
 		Checkbox("##show normals", &renderer_->info_.showNormals);
 		Separator();
+		Text("show skybox"); SameLine();
+		Checkbox("##display skybox", &renderer_->info_.renderSkybox);
+		Separator();
+
+		Text("shadows :");
+		Text("precision :"); SameLine(); 
+		SliderInt("##shadowPrecision", &renderer_->info_.shadowPrecision, 50, maxTextureSize_);
+		Text("box size :"); SameLine();
+		SliderInt("##shadow box size", &renderer_->info_.shadowSize, 10, 1000);
+		
 		glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
 	}
 #endif
@@ -509,27 +553,106 @@ void ns::Debug::inputDrawableObject3d(DrawableObject3d& obj)
 #endif
 }
 
-void ns::Debug::MaterialComponentInput(std::optional<ns::TextureView>& texture, float& value) {
+void buttonRemoveTexture(std::optional<ns::TextureView>& tex) {
 #ifdef USE_IMGUI
+
 	using namespace ImGui;
-	if (texture.has_value()) {
-		Image((void*)texture.value().textureId_, ImVec2(80, 80));
+
+	if (Button("remove texture")) {
+		tex.reset();
 	}
 
-#endif // !NDEBUG
+#endif
+}
+
+void ns::Debug::buttonAddTexture(std::optional<ns::TextureView>& tex, ns::Material& mat) {
+#ifdef USE_IMGUI
+	using namespace ImGui;
+
+	if (Button("add texture")) {
+		std::string filename = mat.directory() + "/" + textureFileNameBuffer;
+		if (isFileExist(filename)) {
+			tex = mat.addTexture("", filename);
+		}
+		else dout << "there is no file named : \n" << filename << '\n';
+	}
+#endif
 }
 
 void ns::Debug::inputMaterial(Material& mat)
 {
 #ifdef USE_IMGUI
 	using namespace ImGui;
-	BulletText(("Material " + mat.name_).c_str());
+	const ImVec2 texSize = ImVec2(texturesSize_, texturesSize_);
 
-	MaterialComponentInput(mat.albedoMap_, mat.roughness_);
-	MaterialComponentInput(mat.roughnessMap_, mat.roughness_);
-	MaterialComponentInput(mat.metallicMap_, mat.roughness_);
-	MaterialComponentInput(mat.normalMap_, mat.roughness_);
-	MaterialComponentInput(mat.ambientOcclusionMap_, mat.roughness_);
+	Text("albedo : ");
+	if (mat.albedoMap_.has_value()) {
+		Image((void*)mat.albedoMap_.value().textureId_, texSize);
+		Text(mat.albedoMap_.value().filepath().c_str());
+		buttonRemoveTexture(mat.albedoMap_);
+	}
+	else {
+		ColorEdit3(createNewFreeId(), &mat.albedo_.x);
+		buttonAddTexture(mat.albedoMap_, mat);
+	}
+	Text("roughness : ");
+	if (mat.roughnessMap_.has_value()) {
+		Image((void*)mat.roughnessMap_.value().textureId_, texSize);
+		Text(mat.roughnessMap_.value().filepath().c_str());
+		buttonRemoveTexture(mat.roughnessMap_);
+	}
+	else {
+		SliderFloat(createNewFreeId(), &mat.roughness_, .001f, 1);
+		buttonAddTexture(mat.roughnessMap_, mat);
+	}
+	Text("metallic : ");
+	if (mat.metallicMap_.has_value()) {
+		Image((void*)mat.metallicMap_.value().textureId_, texSize);
+		Text(mat.metallicMap_.value().filepath().c_str());
+		buttonRemoveTexture(mat.metallicMap_);
+	}
+	else {
+		SliderFloat(createNewFreeId(), &mat.metallic_, 0, 1);
+		buttonAddTexture(mat.metallicMap_, mat);
+	}
+	Text("emission : ");
+	if (mat.emissionMap_.has_value()) {
+		Image((void*)mat.emissionMap_.value().textureId_, texSize);
+		Text(mat.emissionMap_.value().filepath().c_str());
+		Text("strength : "); SameLine();
+		SliderFloat(createNewFreeId(), &mat.emissionStrength_, 0, maxEmission_);
+		buttonRemoveTexture(mat.emissionMap_);
+	}
+	else {
+		SliderFloat3(createNewFreeId(), &mat.emission_.x, 0, maxEmission_);
+		buttonAddTexture(mat.emissionMap_, mat);
+	}
+	Text("normal map : ");
+	if (mat.normalMap_.has_value()) {
+		Image((void*)mat.normalMap_.value().textureId_, texSize);
+		Text(mat.normalMap_.value().filepath().c_str());
+		buttonRemoveTexture(mat.normalMap_);
+	}
+	else {
+		buttonAddTexture(mat.normalMap_, mat);
+	}
+	Text("ambient occlusion map : ");
+	if (mat.ambientOcclusionMap_.has_value()) {
+		Image((void*)mat.ambientOcclusionMap_.value().textureId_, texSize);
+		Text(mat.ambientOcclusionMap_.value().filepath().c_str());
+		buttonRemoveTexture(mat.ambientOcclusionMap_);
+	}
+	else {
+		buttonAddTexture(mat.ambientOcclusionMap_, mat);
+	}
+	NewLine();
+	if (Button("export material")) {  
+		mat.exportYAML();
+	}
+	SameLine();
+	if (Button("import material")) {
+		mat.importYAML();
+	}
 
 #endif // !NDEBUG
 }

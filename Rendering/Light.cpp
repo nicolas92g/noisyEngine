@@ -42,6 +42,8 @@ float ns::attenuatedLightBase_::attenuationValue()
 //	    directional light
 //--------------------------------
 
+ns::DirectionalLight ns::DirectionalLight::nullDirectionalLightObject(glm::vec3(0, 1, 0), NS_BLACK);
+
 ns::DirectionalLight::DirectionalLight(const glm::vec3& direction, const glm::vec3& color)
 	: 
 	LightBase_(color),
@@ -72,6 +74,11 @@ uint32_t ns::DirectionalLight::number()
 void ns::DirectionalLight::clear()
 {
 	number_ = 0;
+}
+
+ns::DirectionalLight& ns::DirectionalLight::nullLight()
+{
+	return nullDirectionalLightObject;
 }
 
 //--------------------------------

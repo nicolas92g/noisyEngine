@@ -179,8 +179,8 @@ namespace ns {
 		ptr_(new T[size_])
 	{
 #		ifndef NDEBUG
-		_STL_ASSERT(x != 0, "x's biarray is null");
-		_STL_ASSERT(y != 0, "y's biarray is null");
+		_STL_ASSERT(x != 0, "x's biarray can't be zero");
+		_STL_ASSERT(y != 0, "y's biarray can't be zero");
 #		endif // !NDEBUG
 	}
 
@@ -238,7 +238,7 @@ namespace ns {
 	template<typename T>
 	inline void BiArray<T>::emplace(uint32_t x, uint32_t y, T&& newValue)
 	{
-		ptr_[x + y * dim_.x] = newValue;
+		ptr_[x + y * dim_.x] = std::move(newValue);
 	}
 	template<typename T>
 	inline T& BiArray<T>::value(uint32_t x, uint32_t y)

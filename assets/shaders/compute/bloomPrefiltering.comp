@@ -1,0 +1,35 @@
+#version 430 core
+#define NS_NUM_WORK_GROUP_X 32
+#define NS_NUM_WORK_GROUP_Y 32
+
+layout( local_size_x = NS_NUM_WORK_GROUP_X, local_size_y = NS_NUM_WORK_GROUP_Y) in;
+layout(rgba16f, binding = 0) uniform image2D outTex;
+
+uniform sampler2D inputTexture;
+uniform float threshold;
+
+vec3 aces(vec3 x) {
+  const float a = 2.51;
+  const float b = 0.03;
+  const float c = 2.43;
+  const float d = 0.59;
+  const float e = 0.14;
+  return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 100.0);
+}
+
+
+void main(){
+	const vec2 size = imageSize(outTex);
+	const uvec2 pixel = gl_GlobalInvocationID.xy;
+
+	vec4 color = texture(inputTexture, vec2((float(gl_GlobalInvocationID.x) + 0) / size.x, (float(gl_GlobalInvocationID.y) - 0) / size.y));
+
+	float brightness = dot(color.rgb, vec3(0.2126, 0.7152, 0.0722));
+    
+	if(brightness > threshold)
+        color = vec4((color.rgb), 1);
+    else
+        color = vec4(0.0, 0.0, 0.0, 1.0);
+
+	imageStore(outTex, ivec2(pixel), color);
+}	

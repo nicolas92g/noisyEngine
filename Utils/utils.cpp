@@ -1,9 +1,12 @@
 #include "utils.h"
 
 #include <fstream>
+#include <iostream>
 #include <imgui.h>
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+
+YAML::Node ns::conf = YAML::LoadFile(CONFIG_FILE);
 
 std::string ns::to_string(const glm::vec2& vec)
 {
@@ -168,4 +171,16 @@ void ns::SetupImGuiStyle(bool bStyleDark_, float alpha_)
             }
         }
     }
+}
+
+void ns::saveConfiguration()
+{
+    std::ofstream file(CONFIG_FILE);
+    file << conf;
+}
+
+bool ns::isFileExist(const std::string& filepath)
+{
+    std::ifstream file(filepath);
+    return file.is_open();
 }

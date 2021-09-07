@@ -3,6 +3,7 @@
 #include <thread>
 #include <future>
 #include <atomic>
+#include <mutex>
 #include "HeightmapStorage.h"
 #include "MeshGenerator.h"
 #include <Utils/BiArray.h>
@@ -23,22 +24,41 @@ namespace ns::Plane{
 	{
 	public:
 		struct Settings {
-			unsigned renderDistance = 8;
+			Settings(MapLengthType size, ChunkPartitionType parts) : chunkPhysicalSize(size), numberOfPartitions(parts) {}
+			Settings(const HeightmapStorage::Settings& settings) : 
+				Settings(settings.chunkPhysicalSize, settings.numberOfPartitions)
+			{}
 			MapLengthType chunkPhysicalSize = MapLengthType(16.0);
 			ChunkPartitionType numberOfPartitions = ns::defaultSize;
-			unsigned maxChunksLoadingThreads = std::min(std::thread::hardware_concurrency(), 1U);
 		};
-		FlatTerrainScene(const Settings& settings, HeightmapStorage& heightMapGenerator);
+		FlatTerrainScene(const Settings& settings, const HeightMapGenerator& function);
+		~FlatTerrainScene();
 
-		void update(GridPositionType& centralChunk);
+		void update(const GridPositionType& centralChunk);
 
-		void setScene(Scene& scene);
+		Scene& lockScene();
+		void unlockScene();
+
+		void setRenderDistance(uint16_t renderDistance);
+		void setMaxOfLoadingThreads(uint16_t maxThreads);
+
+		uint16_t renderDistance() const;
+		uint16_t maxLoadingThreads() const;
+
+		void importFromYAML();
+		void exportIntoYAML();
 
 	protected:
 
+		//dynamic settings
+		std::atomic_uint16_t renderDistance_;
+		std::atomic_uint16_t maxChunksLoadingThreads_;
+
 		struct Chunk {
-			std::shared_ptr<Mesh> mesh;			//chunk mesh
-			bool wasProcessed = false;			//indicate if the chunk is loaded or currently in loading
+			std::shared_ptr<Mesh> mesh;					//chunk mesh
+			std::shared_ptr<DrawableObject3d> object;	//chunk object
+			GridPositionType position;					//position on a grid plane 
+			bool wasProcessed = false;					//indicate if the chunk is loaded or currently in loading
 		};
 
 		struct ChunkToCreate {
@@ -47,12 +67,18 @@ namespace ns::Plane{
 		};
 
 		std::atomic<Settings> settings_;
+
 		//generators
-		HeightmapStorage& heightGen_;
+		HeightmapStorage heightStorage_;
 		MeshGenerator meshGen_;
 
 		//data storage
-		Scene* scene_;
+		Scene scene_;
+		std::mutex sceneMutex_;
+
+		std::vector<ChunkToCreate> chunksData_;
+		std::mutex chunksDataMutex_;
+
 		std::unique_ptr<BiArray<Chunk>> chunks_;
 		std::atomic_uint32_t numberOfChunks_;
 
@@ -62,7 +88,9 @@ namespace ns::Plane{
 
 		std::unique_ptr<std::thread> searchingThread_; //thread that search for new chunk to load
 		std::atomic_bool stopSearchingThread_;
+
 		std::vector<std::future<void>> loadingFutures_;
+		std::mutex loadingFuturesMutex_;
 
 	protected:
 		void checkRenderDistanceCapacity();
@@ -71,10 +99,13 @@ namespace ns::Plane{
 		static void searchingThreadFunction(FlatTerrainScene* object);
 		static void loadingThreadFunction(FlatTerrainScene* object, ns::GridPositionType chunk);
 
+
+		void moveChunkArray(const GridPositionType& newCentralChunk);
 		//this function check if the searching is already running and stop it to restart it from the beginning
 		void stopAndRestartSearchingThread();
 
 		Chunk& getChunk(const GridPositionType& gridPos);
+
 	public:
 		//store a list of grid position that allow to check all the chunks near one central chunk one by one by iterating through those arrays
 		static std::array<std::vector<ns::GridPositionType>, maximunRenderDistance> getOrder();			//create the arrays

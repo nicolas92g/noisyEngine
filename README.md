@@ -23,6 +23,11 @@
 <H5>Majors Implementations needed</H5>
 
 - animations
+- physX
 - transparent material support
 - dir lights shadows
+
+
+
+<H6>Minors Implementations needed</H6>
 - point lights shadows

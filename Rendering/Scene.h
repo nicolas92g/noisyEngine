@@ -11,14 +11,17 @@ namespace ns {
 	class Scene
 	{
 	public:
-		Scene(
+		Scene(DirectionalLight& dirLight,
 			const std::vector<DrawableObject3d*>& entities = {},
 			const std::vector<DrawableObject3d*>& stationaries = {},
-			const std::vector<LightBase_*>& lights = std::vector<LightBase_*>(0)
+			const std::vector<attenuatedLightBase_*>& lights = std::vector<attenuatedLightBase_*>(0)
 		);
 		Scene(const Scene& other);
 		Scene(Scene&& other) noexcept;
-		
+
+		uint32_t numEntities();
+		uint32_t numStationaries();
+		uint32_t numLights();
 
 		void sendLights(const ns::Shader& shader) const;
 		void draw(const ns::Shader& shader) const;
@@ -34,19 +37,25 @@ namespace ns {
 		void removeStationary(DrawableObject3d& object);
 		void clearStationaries();
 
-		void addLight(LightBase_& light);
-		void removeLight(LightBase_& light);
-		void addLights(const std::vector<std::shared_ptr<LightBase_>>& lights);
+		void addLight(attenuatedLightBase_& light);
+		void removeLight(attenuatedLightBase_& light);
+		void addLights(const std::vector<std::shared_ptr<attenuatedLightBase_>>& lights);
+
+		void setDirectionalLight(DirectionalLight& dirLight);
+		DirectionalLight& directionalLight();
 
 		void operator+=(const Scene& other);
 		void operator=(const Scene& other);
 		void operator=(Scene&& other) noexcept;
+
+		friend Scene operator+(Scene scene, const Scene& other);
 		
 
 	protected:
 		std::vector<DrawableObject3d*> entities_;		//movable Objects
 		std::vector<DrawableObject3d*> stationaries_;	//motionless Objects
-		std::vector<LightBase_*> lights_;				//lights Objects using polymorphism
+		std::vector<attenuatedLightBase_*> lights_;		//lights Objects using polymorphism
+		DirectionalLight* dirLight_;					//single directional light
 
 		friend class Debug;
 

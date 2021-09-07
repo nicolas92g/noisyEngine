@@ -1,3 +1,10 @@
+/*****************************************************************//**
+ * \file   noisy.hpp
+ * \brief  file to import all the noisy's features
+ * 
+ * \author Nicolas Guillot
+ * \date   September 2021
+ *********************************************************************/
 
 //renderer
 #include <Rendering/Window.h>
@@ -9,7 +16,6 @@
 #include <Rendering/Scene.h>
 #include <Rendering/Light.h>
 #include <Rendering/BillboardRenderer.h>
-#include <Rendering/PostProcessingLayer.h>
 
 //utils
 #include <Utils/Timer.h>

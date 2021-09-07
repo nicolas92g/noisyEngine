@@ -26,12 +26,11 @@ ns::Model::Model(const std::string& modelFilePath)
 
 	const std::string extension = modelFilePath.substr(modelFilePath.find_last_of('.') + 1);
 
-	importWithAssimp(); return;
-
-	if (extension == "fbx")
-		importWithOpenFBX();
-	else 
-		importWithAssimp();
+	importWithAssimp();
+	//if (extension == "fbx")
+	//	importWithOpenFBX();
+	//else 
+	//	importWithAssimp();
 }
 
 ns::Model::~Model(){} 
@@ -178,7 +177,7 @@ void ns::Model::createMeshFromFBX(const ofbx::Mesh& mesh, ofbx::IScene& scene)
 		materials_.push_back(std::make_unique<Material>(mesh.getMaterial(0), dir_));
 	}
 
-	meshes_.push_back(std::make_unique<ns::Mesh>(vertices, indices, *materials_[materials_.size() - 1], info));
+	meshes_.push_back(std::make_unique<ns::Mesh>(vertices, indices, *materials_.back(), info));
 }
 
 void ns::Model::readNodesFromAssimp(aiNode* node, const aiScene* scene)
@@ -244,12 +243,24 @@ void ns::Model::createMeshFromAssimp(aiMesh* mesh, const aiScene* scene)
 	}
 
 	//fill material
-	if (mesh->mMaterialIndex >= 0) {
+
+	std::string potentialMaterialFileName(filepath_.substr(0, filepath_.find_last_of('/') + 1) + info.name + NS_MATERIAL_FILE_EXTENSION);
+
+	if (isFileExist(potentialMaterialFileName)) {
+		dout << "material file : " << potentialMaterialFileName << " founded \n";
+		materials_.push_back(std::make_unique<ns::Material>(potentialMaterialFileName));
+	}
+	else if (mesh->mMaterialIndex >= 0) {
 		aiMaterial* mtl = scene->mMaterials[mesh->mMaterialIndex];
-		materials_.push_back(std::make_unique<ns::Material>(mtl, dir_));
+		materials_.push_back(std::make_unique<ns::Material>(mtl, dir_, potentialMaterialFileName));
+	}
+	else {
+		materials_.push_back(std::make_unique<ns::Material>(glm::vec3(.5), .1, 0.01, NS_BLACK, potentialMaterialFileName));
 	}
 
-	meshes_.push_back(std::make_unique<ns::Mesh>(vertices, indices, *materials_[materials_.size() - 1].get(), info));
+	//dout << "material file name = " << potentialMaterialFileName << std::endl;
+
+	meshes_.push_back(std::make_unique<ns::Mesh>(vertices, indices, *materials_.back(), info));
 }
 
 void ns::Model::getLightsFromAssimp(const aiScene* scene)

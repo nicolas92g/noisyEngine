@@ -19,58 +19,7 @@ ns::Texture::Texture(const char* textureFilePath)
 	loaded_(true),
 	filePath_(textureFilePath)
 {
-	unsigned char* data = stbi_load(textureFilePath, &width_, &height_, &numberOfChannels_, 0);
-	
-	glGenTextures(1, &id_);
-	glBindTexture(GL_TEXTURE_2D, id_);
-	
-	if (!data) {
-		Debug::get() << "failed to load a texture at : " << textureFilePath << std::endl;
-		loaded_ = false;
-		return;
-	}
-
-#	ifndef NDEBUG
-
-	if (std::find(alreadyLoadedTextures.begin(), alreadyLoadedTextures.end(), filePath_) != alreadyLoadedTextures.end()) {
-		Debug::get() << "PERFORMANCE WARNING !!! : same texture loaded twice : " << filePath_ << std::endl;
-	}
-	else {
-		alreadyLoadedTextures.push_back(filePath_);
-	}
-
-#	endif
-
-	GLuint format;
-	switch (numberOfChannels_) {
-	case 1:
-		format = GL_RED;
-		break;
-	case 2:
-		format = GL_RG;
-		break;
-	case 3:
-		format = GL_RGB;
-		break;
-	case 4:
-		format = GL_RGBA;
-		break;
-	default:
-		Debug::get() << "texture " << filePath_ << " has " << numberOfChannels_ << " number of channels !\n";
-		return;
-	}
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-	glTexImage2D(GL_TEXTURE_2D, 0, format, width_, height_, 0, format, GL_UNSIGNED_BYTE, data);
-	glGenerateMipmap(GL_TEXTURE_2D);
-
-
-	glBindTexture(GL_TEXTURE_2D, 0);
+	load();
 }
 
 ns::Texture::Texture(aiTexture* const assimpTexture)
@@ -114,6 +63,13 @@ bool ns::Texture::isLoaded() const
 	return loaded_;
 }
 
+void ns::Texture::reload(const std::string& textureFilePath)
+{
+	destroy();
+	filePath_ = textureFilePath;
+	load();
+}
+
 bool ns::Texture::operator==(const TextureView& textureView) const
 {
 	return id_ == textureView.textureId_;
@@ -121,17 +77,7 @@ bool ns::Texture::operator==(const TextureView& textureView) const
 
 ns::Texture::~Texture()
 {
-#	ifndef NDEBUG
-
-	if (filePath_ != NS_EMBEMBEDDED_FILEPATH_NAME) {
-		auto it = std::find(alreadyLoadedTextures.begin(), alreadyLoadedTextures.end(), filePath_);
-		if(it != alreadyLoadedTextures.end())
-			alreadyLoadedTextures.erase(it);
-	}
-		
-#	endif // !NDEBUG
-
-	glDeleteTextures(1, &id_);
+	destroy();
 }
 
 const int ns::Texture::width() const
@@ -159,18 +105,91 @@ void ns::Texture::bind() const
 	glBindTexture(GL_TEXTURE_2D, id_);
 }
 
-ns::TextureView::TextureView(const Texture& textureToSee)
+void ns::Texture::load()
 {
-	this->textureId_ = textureToSee.id_;
-	this->width_ = textureToSee.width_;
-	this->height_ = textureToSee.height_;
+	unsigned char* data = stbi_load(filePath_.c_str(), &width_, &height_, &numberOfChannels_, 0);
+
+	glGenTextures(1, &id_);
+	glBindTexture(GL_TEXTURE_2D, id_);
+
+	if (!data) {
+		dout << "failed to load a texture at : " << filePath_ << std::endl;
+		loaded_ = false;
+		return;
+	}
+
+#	ifndef NDEBUG
+
+	if (std::find(alreadyLoadedTextures.begin(), alreadyLoadedTextures.end(), filePath_) != alreadyLoadedTextures.end()) {
+		dout << "PERFORMANCE WARNING !!! : same texture loaded twice : " << filePath_ << std::endl;
+	}
+	else {
+		alreadyLoadedTextures.push_back(filePath_);
+	}
+
+#	endif
+
+	GLuint format;
+	switch (numberOfChannels_) {
+	case 1:
+		format = GL_RED;
+		break;
+	case 2:
+		format = GL_RG;
+		break;
+	case 3:
+		format = GL_RGB;
+		break;
+	case 4:
+		format = GL_RGBA;
+		break;
+	default:
+		Debug::get() << "texture " << filePath_ << " has " << numberOfChannels_ << " number of channels !\n";
+		return;
+	}
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, format, width_, height_, 0, format, GL_UNSIGNED_BYTE, data);
+	glGenerateMipmap(GL_TEXTURE_2D);
+
+
+	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void ns::TextureView::operator=(const Texture& textureToSee)
+void ns::Texture::destroy()
+{
+#	ifndef NDEBUG
+
+	if (filePath_ != NS_EMBEMBEDDED_FILEPATH_NAME) {
+		auto it = std::find(alreadyLoadedTextures.begin(), alreadyLoadedTextures.end(), filePath_);
+		if (it != alreadyLoadedTextures.end())
+			alreadyLoadedTextures.erase(it);
+	}
+
+#	endif // !NDEBUG
+
+	glDeleteTextures(1, &id_);
+}
+
+ns::TextureView::TextureView(Texture& textureToSee) : 
+	textureId_(textureToSee.id_)
+#ifdef NS_TEXTURE_VIEW_STORE_POINTER
+	, ptr_(&textureToSee)
+#endif
+{}
+
+void ns::TextureView::operator=(Texture& textureToSee)
 {
 	this->textureId_ = textureToSee.id_;
-	this->width_ = textureToSee.width_;
-	this->height_ = textureToSee.height_;
+
+#	ifdef NS_TEXTURE_VIEW_STORE_POINTER
+	ptr_ = &textureToSee;
+#	endif
 }
 
 bool ns::TextureView::operator==(const Texture& texture)
@@ -189,17 +208,7 @@ void ns::TextureView::bind() const
 #	ifndef NDEBUG
 	const GLenum errorCode = glGetError();
 	if (errorCode) {
-		Debug::get() << "an OpenGL error " << errorCode << " occured while binding a texture view !\n";
+		dout << "an OpenGL error " << errorCode << " occured while binding a texture view !\n";
 	}
 #	endif // NDEBUG
-}
-
-const int ns::TextureView::width() const
-{
-	return width_;
-}
-
-const int ns::TextureView::height() const
-{
-	return height_;
 }

@@ -64,8 +64,8 @@ namespace ns {
 		bool maximised_;
 
 		glm::ivec4 previousWindowPosAndSize_;
-		void importFromYAML(const std::string& filepath);
-		void exportIntoYAML(const std::string& filepath);
+		void importFromYAML();
+		void exportIntoYAML();
 
 	private:
 		static void framebufferResizeCallback(GLFWwindow* window, int width, int height);

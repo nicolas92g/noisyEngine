@@ -19,7 +19,7 @@ ns::DrawableObject3d::DrawableObject3d(Drawable& model, const glm::vec3& positio
 		auto sLight = dynamic_cast<SpotLight*>(ptr->getLights()[i].get());
 
 		if (dLight) { 
-			lights_[i] = std::make_shared<DirectionalLight>(*dLight);
+			lights_[i] = std::make_shared<DirectionalLight>(*dLight); 
 		}
 		else if (sLight) {
 			lights_[i] = std::make_shared<SpotLight>(*sLight);

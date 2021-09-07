@@ -46,6 +46,10 @@ namespace ns {
 
 		static uint32_t number();
 		static void clear();
+		static DirectionalLight& nullLight();
+
+	protected:
+		static DirectionalLight nullDirectionalLightObject;
 
 	private:
 		static uint32_t number_;

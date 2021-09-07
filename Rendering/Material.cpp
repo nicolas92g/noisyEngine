@@ -2,6 +2,7 @@
 
 #include <glad/glad.h>
 #include <iostream>
+#include <fstream>
 
 #include <Utils/utils.h>
 #include <Utils/DebugLayer.h>
@@ -11,18 +12,22 @@ bool ns::Material::describeMaterialsWhenCreate = false;
 
 ns::Material ns::Material::defaultMaterial;
 
-ns::Material::Material(const glm::vec3& albedo, float roughness, float metallic, float emission)
+ns::Material::Material(const glm::vec3& albedo, float roughness, float metallic, const glm::vec3& emission, const std::string& exportName)
 	:
 	albedo_(albedo),
 	roughness_(roughness),
 	metallic_(metallic),
-	emission_(emission)
+	emission_(emission),
+	emissionStrength_(1.f),
+	filepath_(exportName)
 {}
 
-ns::Material::Material(aiMaterial* mtl, const std::string& texturesDirectory)
+ns::Material::Material(aiMaterial* mtl, const std::string& texturesDirectory, const std::string& exportName)
 	:
 	Material()
 {
+	filepath_ = exportName;
+
 	if (describeMaterialsWhenCreate) describeMaterial(mtl);
 	aiString path;
 
@@ -77,7 +82,7 @@ ns::Material::Material(aiMaterial* mtl, const std::string& texturesDirectory)
 	}
 }
 
-ns::Material::Material(const ofbx::Material* mtl, const std::string& texturesDirectory)
+ns::Material::Material(const ofbx::Material* mtl, const std::string& texturesDirectory, const std::string& exportName)
 	: 
 	Material()
 {
@@ -85,6 +90,7 @@ ns::Material::Material(const ofbx::Material* mtl, const std::string& texturesDir
 	metallic_ = mtl->getReflectionFactor();
 	roughness_ = mtl->getShininessExponent();
 	name_ = mtl->name;
+	filepath_ = exportName;
 
 	const ofbx::Texture* tex;
 	char buffer[200];
@@ -125,6 +131,141 @@ ns::Material::Material(const ofbx::Material* mtl, const std::string& texturesDir
 		ambientOcclusionMap_ = addTexture("", buffer);
 	}
 
+}
+
+ns::Material::Material(const std::string& filepath) :
+	Material()
+{
+	filepath_ = filepath;
+	importYAML();
+}
+
+std::string getRelativePath(const std::optional<ns::TextureView>& tex, const std::string& directory) {
+	auto pos = tex.value().filepath().find(directory);
+	if (pos == std::string::npos) {
+		return "";
+	}
+	return tex.value().filepath().substr(pos + directory.size() + 1);
+}
+
+void ns::Material::exportYAML() const
+{
+	std::string dir = directory();
+	YAML::Node file;
+
+	if (albedoMap_.has_value())
+		file["albedo"] = getRelativePath(albedoMap_, dir);
+	else
+		file["albedo"] = albedo_;
+
+	if (roughnessMap_.has_value())
+		file["roughness"] = getRelativePath(roughnessMap_, dir);
+	else
+		file["roughness"] = roughness_;
+
+	if (metallicMap_.has_value())
+		file["metallic"] = getRelativePath(metallicMap_, dir);
+	else
+		file["metallic"] = metallic_;
+
+	if (emissionMap_.has_value()) {
+		file["emission"] = getRelativePath(emissionMap_, dir);
+		file["emissionStrength"] = emissionStrength_;
+	}
+	else
+		file["emission"] = emission_;
+
+	if (normalMap_.has_value())
+		file["normal"] = getRelativePath(normalMap_, dir);
+
+	if (ambientOcclusionMap_.has_value())
+		file["ao"] = getRelativePath(ambientOcclusionMap_, dir);
+
+	std::ofstream fileWriting(filepath_);
+	if (!fileWriting)
+		dout << "failed to export a material at : " << filepath_ << "\n";
+	else {
+		fileWriting << file;
+		dout << "a material was successfully exported at :\n" << filepath_ << " !\n";
+	}
+}
+
+void ns::Material::importYAML()
+{
+	//find the directory where the material is located
+	std::string dir = directory();
+	YAML::Node materialFile;
+
+	try
+	{
+		materialFile = YAML::LoadFile(filepath_);
+	}
+	catch (...)
+	{
+		dout << "failed to import material file : " << filepath_ << '\n';
+	}
+
+	//try to import albedo
+	try {
+		if (materialFile["albedo"].IsSequence()) {
+			albedo_ = materialFile["albedo"].as<glm::vec3>();
+		}
+		else if (materialFile["albedo"].IsScalar()) {
+			albedoMap_ = addTexture(dir, materialFile["albedo"].as<std::string>());
+		}
+	}
+	catch (...) {}
+
+	//try to import roughness
+	try {
+		roughness_ = materialFile["roughness"].as<float>();
+	}
+	catch (...) {
+		try {
+			roughnessMap_ = addTexture(dir, materialFile["roughness"].as<std::string>());
+		}
+		catch (...) {}
+	}
+
+	//try to import metallic
+	try {
+		metallic_ = materialFile["metallic"].as<float>();
+	}
+	catch (...) {
+		try {
+			metallicMap_ = addTexture(dir, materialFile["metallic"].as<std::string>());
+		}
+		catch (...) {}
+	}
+
+	//try to import emission
+	try {
+		if (materialFile["emission"].IsSequence()) {
+			emission_ = materialFile["emission"].as<glm::vec3>();
+		}
+		else if (materialFile["emission"].IsScalar()) {
+			emissionMap_ = addTexture(dir, materialFile["emission"].as<std::string>());
+		}
+	}
+	catch (...) {}
+
+	//try to import emission strength
+	try {
+		emissionStrength_ = materialFile["emissionStrength"].as<float>();
+	}
+	catch (...) {}
+
+	//try to import normal map
+	try {
+		normalMap_ = addTexture(dir, materialFile["normal"].as<std::string>());
+	}
+	catch (...) {}
+
+	//try to import ambient occlusion map
+	try {
+		ambientOcclusionMap_ = addTexture(dir, materialFile["ao"].as<std::string>());
+	}
+	catch (...) {}
 }
 
 void ns::Material::bind(const ns::Shader& shader) const
@@ -176,7 +317,10 @@ void ns::Material::bind(const ns::Shader& shader) const
 	}
 
 	if (emissionMap_.has_value()) {
+		//send emission strength
+		shader.set("mat.emissionStrength", emissionStrength_);
 
+		//send texture sampler
 		shader.set<int>("mat.emissionMap", freeTextureSampler);
 
 		glActiveTexture(GL_TEXTURE0 + freeTextureSampler);
@@ -317,6 +461,11 @@ void ns::Material::removeNormalTexture()
 void ns::Material::removeAmbientOcclusionTexture()
 {
 	if (ambientOcclusionMap_.has_value()) removeTexture(ambientOcclusionMap_.value());
+}
+
+std::string ns::Material::directory() const
+{
+	return filepath_.substr(0, filepath_.find_last_of('/'));
 }
 
 void ns::Material::convertAiColor4dToVec3(const aiColor4D& ai4d, glm::vec3& vec)

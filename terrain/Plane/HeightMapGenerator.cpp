@@ -1,7 +1,55 @@
 #include "HeightMapGenerator.h"
 #include "gcem.hpp"
 
+ns::Plane::HeightMapGenerator::HeightMapGenerator(const Settings& settings)
+	:
+	settings_(settings)
+{
+#		ifndef NDEBUG
+		numberOfComputation_ = 0;
+#		endif // !NDEBUG
 
+		inversedAmplitudeRect_ = 0;
+		for (const auto& octave : settings_.octaves) {
+			inversedAmplitudeRect_ += octave.amplitude;
+		}
+
+		inversedAmplitudeRect_ = 1 / inversedAmplitudeRect_;
+}
+
+const ns::Plane::HeightMapGenerator::Settings& ns::Plane::HeightMapGenerator::settings() const
+{
+	return settings_;
+}
+
+ns::HeightType ns::Plane::HeightMapGenerator::operator()(const ns::MapLengthType& pos) const
+{
+#		ifndef NDEBUG
+		numberOfComputation_++;
+#		endif // !NDEBUG
+
+	HeightType ret = 0;
+
+	for (const auto& octave : settings_.octaves) {
+		if(octave.ridged)
+			ret += ridgedSimplexNoise(pos * octave.frequency + octave.offset) * octave.amplitude;
+		else
+			ret += simplexNoise(pos * octave.frequency + octave.offset) * octave.amplitude;
+	}
+
+	ret *= inversedAmplitudeRect_;
+
+	return pow(ret, settings_.exponent);
+}
+
+#ifndef NDEBUG
+
+size_t ns::Plane::HeightMapGenerator::callCounter() const
+{
+	return numberOfComputation_;
+}
+
+#endif // !NDEBUG
 
 
 //SIMPLEX NOISE
@@ -38,7 +86,7 @@ int grad3[12][3] =
 
 //functions
 
-int ns::fastfloor(LengthType x)
+int ns::Plane::fastfloor(LengthType x)
 {
 	return (x > 0) ? static_cast<int>(x) : static_cast<int>(x - 1);
 }
@@ -47,16 +95,16 @@ ns::LengthType dot(int g[], ns::LengthType x, ns::LengthType y) {
 	return g[0] * x + g[1] * y;
 }
 
-ns::HeightType ns::simplexNoise(MapLengthType in)
+ns::HeightType ns::Plane::simplexNoise(const MapLengthType& in)
 {
 	LengthType n0, n1, n2;
 
-	constexpr LengthType F2 = .5 * (gcem::sqrt(3.0) - 1.0);
+	static constexpr LengthType F2 = .5 * (gcem::sqrt(3.0) - 1.0);
 	const LengthType s = (in.x + in.y) * F2;
 	const int i = fastfloor(in.x + s);
 	const int j = fastfloor(in.y + s);
 
-	constexpr LengthType G2 = (3._lt - gcem::sqrt(3._lt)) / 6._lt;
+	static constexpr LengthType G2 = (3._lt - gcem::sqrt(3._lt)) / 6._lt;
 	const LengthType t = (i + j) * G2;
 	const LengthType X0 = i - t;
 	const LengthType Y0 = j - t;
@@ -109,4 +157,9 @@ ns::HeightType ns::simplexNoise(MapLengthType in)
 	}
 
 	return 70._ht * (static_cast<ns::HeightType>(n0) + n1 + n2);
+}
+
+ns::HeightType ns::Plane::ridgedSimplexNoise(const MapLengthType& location)
+{
+	return 2.0_ht * (abs(0.5_ht - simplexNoise(location)));
 }

@@ -1,12 +1,21 @@
 #pragma once
 #define NS_PATH "C:/Users/nicol/source/repos/noisyEngine/noisyEngine/Source/"
 #define CONFIG_FILE "config.yaml"
+#define NS_MATERIAL_FILE_EXTENSION ".nsmat"
 
 #ifndef NDEBUG
 #define USE_IMGUI
+#else
+#define USE_IMGUI
 #endif // !NDEBUG
 
+
+
 #include <glm/glm.hpp>
+
+//macros to make sintax faster and more readable
+#define dout ns::Debug::get()
+#define newl '\n'
 
 namespace ns{
 	using LengthType = float;

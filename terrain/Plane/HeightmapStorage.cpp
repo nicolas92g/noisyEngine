@@ -26,7 +26,7 @@ std::shared_ptr<ns::Plane::HeightmapStorage::Result> ns::Plane::HeightmapStorage
 	{
 		for (size_t j = 0; j < result->values.y(); j++)
 		{
-			result->values.value(i, j) = settings_.generator_(MapLengthType(
+			result->values.value(i, j) = settings_.generator(MapLengthType(
 				settings_.chunkPhysicalSize.x * input.x + i * data_.primitiveSize.x,
 				settings_.chunkPhysicalSize.y * input.y + j * data_.primitiveSize.y
 			));
@@ -41,7 +41,7 @@ std::shared_ptr<ns::Plane::HeightmapStorage::Result> ns::Plane::HeightmapStorage
 	left.positions.resize(HEIGHT);
 	for (size_t i = 0; i < HEIGHT; i++)
 	{
-		left.positions[i].y = settings_.generator_(MapLengthType(
+		left.positions[i].y = settings_.generator(MapLengthType(
 			settings_.chunkPhysicalSize.x * input.x - data_.primitiveSize.x,
 			settings_.chunkPhysicalSize.y * input.y + i * data_.primitiveSize.y
 		));
@@ -53,7 +53,7 @@ std::shared_ptr<ns::Plane::HeightmapStorage::Result> ns::Plane::HeightmapStorage
 	right.positions.resize(HEIGHT);
 	for (size_t i = 0; i < HEIGHT; i++)
 	{
-		right.positions[i].y = settings_.generator_(MapLengthType(
+		right.positions[i].y = settings_.generator(MapLengthType(
 			settings_.chunkPhysicalSize.x * input.x + (WIDTH) *  data_.primitiveSize.x,
 			settings_.chunkPhysicalSize.y * input.y + i * data_.primitiveSize.y
 		));
@@ -65,7 +65,7 @@ std::shared_ptr<ns::Plane::HeightmapStorage::Result> ns::Plane::HeightmapStorage
 	bottom.positions.resize(WIDTH);
 	for (size_t i = 0; i < WIDTH; i++)
 	{
-		bottom.positions[i].y = settings_.generator_(MapLengthType(
+		bottom.positions[i].y = settings_.generator(MapLengthType(
 			settings_.chunkPhysicalSize.x * input.x + i * data_.primitiveSize.x,
 			settings_.chunkPhysicalSize.y * input.y - data_.primitiveSize.y
 		));
@@ -77,7 +77,7 @@ std::shared_ptr<ns::Plane::HeightmapStorage::Result> ns::Plane::HeightmapStorage
 	top.positions.resize(WIDTH);
 	for (size_t i = 0; i < WIDTH; i++)
 	{
-		top.positions[i].y = settings_.generator_(MapLengthType(
+		top.positions[i].y = settings_.generator(MapLengthType(
 			settings_.chunkPhysicalSize.x * input.x + i * data_.primitiveSize.x,
 			settings_.chunkPhysicalSize.y * input.y + (HEIGHT) * data_.primitiveSize.y
 		));

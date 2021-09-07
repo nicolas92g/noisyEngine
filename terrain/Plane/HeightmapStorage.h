@@ -4,6 +4,7 @@
 #include <configNoisy.hpp>
 #include <Rendering/Mesh.h>
 #include <Utils/BiArray.h>
+#include <terrain/Plane/HeightMapGenerator.h>
 
 //stl
 #include <vector>
@@ -18,10 +19,15 @@ namespace ns::Plane {
 	{
 	public:
 		struct Settings {
-			MapLengthType chunkPhysicalSize = MapLengthType(32);
+			Settings(const HeightMapGenerator& gen, MapLengthType size = {16, 16}, ChunkPartitionType parts = ns::defaultSize)
+				:
+				chunkPhysicalSize(size),
+				numberOfPartitions(parts),
+				generator(gen)
+			{}
+			MapLengthType chunkPhysicalSize = MapLengthType(16);
 			ChunkPartitionType numberOfPartitions = ns::defaultSize;
-
-			HeightType(*generator_)(const MapLengthType&);
+			HeightMapGenerator generator;
 		};
 
 		struct NeighborChunkLine {

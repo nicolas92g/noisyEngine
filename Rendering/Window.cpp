@@ -93,7 +93,7 @@ ns::Window::Window(uint32_t width, uint32_t height, const char* title, int sampl
 
 #	endif //NDEBUG
 
-    importFromYAML(CONFIG_FILE);
+    importFromYAML();
 }
 
 ns::Window::~Window()
@@ -104,7 +104,7 @@ ns::Window::~Window()
     ImGui::DestroyContext();
 #   endif
 
-    exportIntoYAML(CONFIG_FILE);
+    exportIntoYAML();
 	glfwTerminate();
 }
 
@@ -349,41 +349,31 @@ GLFWmonitor* ns::Window::getUsedMonitor() const
     return bestmonitor;
 }
 
-void ns::Window::importFromYAML(const std::string& filepath)
+void ns::Window::importFromYAML()
 {
-    YAML::Node config;
     try {
-        config = YAML::LoadFile(filepath);
-    }
-    catch (...) { std::cerr << "failed to import window settings !\n"; return; }
-    
-    try {
-        glm::ivec2 buf = config["window"]["size"].as<glm::ivec2>();
-        if (buf.x < 0) { std::cerr << "window size imported is incorrect !"; return; }
+        glm::ivec2 buf = conf["window"]["size"].as<glm::ivec2>();
+        if (buf.x < 0) { dout << "window size imported is incorrect !"; return; }
         setSize(buf.x, buf.y);
-        buf = config["window"]["position"].as<glm::ivec2>();
+        buf = conf["window"]["position"].as<glm::ivec2>();
         setPosition(buf.x, buf.y);
 
-        setFullscreen(config["window"]["fullscreen"].as<bool>());
-        if (config["window"]["maximised"].as<bool>()) maximise();
+        setFullscreen(conf["window"]["fullscreen"].as<bool>());
+        if (conf["window"]["maximised"].as<bool>()) maximise();
     }
-    catch (...) {
-        return;
+    catch(...){
+#       ifndef NDEBUG
+        dout << "failed to import the window's configuration !\n";
+#       endif // !NDEBUG
     }
 }
 
-void ns::Window::exportIntoYAML(const std::string& filepath)
+void ns::Window::exportIntoYAML()
 {
-    YAML::Node conf;
-
     conf["window"]["size"] = size();
     conf["window"]["position"] = position();
     conf["window"]["fullscreen"] = fullscreen_;
     conf["window"]["maximised"] = maximised_;
-
-    std::ofstream file(filepath, std::ios::app);
-    file << "\n\n";
-    file << conf;
 }
 
 void ns::Window::framebufferResizeCallback(GLFWwindow* window, int width, int height)
@@ -409,8 +399,9 @@ void APIENTRY ns::Window::glDebugOutput(GLenum source,
     // ignore non-significant error/warning codes
     if (id == 131169 || id == 131185 || id == 131218 || id == 131204) return;
 
-    std::cerr << "---------------" << std::endl;
-    std::cerr << "Debug message (" << id << "): " << message << std::endl;
+    std::cerr << "---------------" << '\n';
+    std::cerr << "Debug message (" << id << "): " << message << '\n';
+    dout << "OpenGL Error : " << id << '\n';
 
     switch (source)
     {
@@ -420,7 +411,7 @@ void APIENTRY ns::Window::glDebugOutput(GLenum source,
     case GL_DEBUG_SOURCE_THIRD_PARTY:     std::cerr << "Source: Third Party"; break;
     case GL_DEBUG_SOURCE_APPLICATION:     std::cerr << "Source: Application"; break;
     case GL_DEBUG_SOURCE_OTHER:           std::cerr << "Source: Other"; break;
-    } std::cerr << std::endl;
+    } std::cerr << '\n';
 
     switch (type)
     {
@@ -433,7 +424,7 @@ void APIENTRY ns::Window::glDebugOutput(GLenum source,
     case GL_DEBUG_TYPE_PUSH_GROUP:          std::cerr << "Type: Push Group"; break;
     case GL_DEBUG_TYPE_POP_GROUP:           std::cerr << "Type: Pop Group"; break;
     case GL_DEBUG_TYPE_OTHER:               std::cerr << "Type: Other"; break;
-    } std::cerr << std::endl;
+    } std::cerr << '\n';
 
     switch (severity)
     {
@@ -441,53 +432,6 @@ void APIENTRY ns::Window::glDebugOutput(GLenum source,
     case GL_DEBUG_SEVERITY_MEDIUM:       std::cerr << "Severity: medium"; break;
     case GL_DEBUG_SEVERITY_LOW:          std::cerr << "Severity: low"; break;
     case GL_DEBUG_SEVERITY_NOTIFICATION: std::cerr << "Severity: notification"; break;
-    } std::cerr << std::endl;
-    std::cerr << std::endl;
+    } std::cerr << '\n';
+    std::cerr << '\n';
 }
-
-//void APIENTRY ns::Window::glDebugOutput(GLenum source,
-//    GLenum type,
-//    unsigned int id,
-//    GLenum severity,
-//    GLsizei length,
-//    const char* message,
-//    const void* userParam)
-//{
-//    // ignore non-significant error/warning codes
-//    if (id == 131169 || id == 131185 || id == 131218 || id == 131204) return;
-//
-//    Debug::get() << "---------------" << std::endl;
-//    Debug::get() << "Debug message (" << id << "): " << message << std::endl;
-//
-//    switch (source)
-//    {
-//    case GL_DEBUG_SOURCE_API:             Debug::get() << "Source: API"; break;
-//    case GL_DEBUG_SOURCE_WINDOW_SYSTEM:   Debug::get() << "Source: Window System"; break;
-//    case GL_DEBUG_SOURCE_SHADER_COMPILER: Debug::get() << "Source: Shader Compiler"; break;
-//    case GL_DEBUG_SOURCE_THIRD_PARTY:     Debug::get() << "Source: Third Party"; break;
-//    case GL_DEBUG_SOURCE_APPLICATION:     Debug::get() << "Source: Application"; break;
-//    case GL_DEBUG_SOURCE_OTHER:           Debug::get() << "Source: Other"; break;
-//    } Debug::get() << std::endl;
-//
-//    switch (type)
-//    {
-//    case GL_DEBUG_TYPE_ERROR:               Debug::get() << "Type: Error"; break;
-//    case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: Debug::get() << "Type: Deprecated Behaviour"; break;
-//    case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:  Debug::get() << "Type: Undefined Behaviour"; break;
-//    case GL_DEBUG_TYPE_PORTABILITY:         Debug::get() << "Type: Portability"; break;
-//    case GL_DEBUG_TYPE_PERFORMANCE:         Debug::get() << "Type: Performance"; break;
-//    case GL_DEBUG_TYPE_MARKER:              Debug::get() << "Type: Marker"; break;
-//    case GL_DEBUG_TYPE_PUSH_GROUP:          Debug::get() << "Type: Push Group"; break;
-//    case GL_DEBUG_TYPE_POP_GROUP:           Debug::get() << "Type: Pop Group"; break;
-//    case GL_DEBUG_TYPE_OTHER:               Debug::get() << "Type: Other"; break;
-//    } Debug::get() << std::endl;
-//
-//    switch (severity)
-//    {
-//    case GL_DEBUG_SEVERITY_HIGH:         Debug::get() << "Severity: high"; break;
-//    case GL_DEBUG_SEVERITY_MEDIUM:       Debug::get() << "Severity: medium"; break;
-//    case GL_DEBUG_SEVERITY_LOW:          Debug::get() << "Severity: low"; break;
-//    case GL_DEBUG_SEVERITY_NOTIFICATION: Debug::get() << "Severity: notification"; break;
-//    } Debug::get() << std::endl;
-//    Debug::get() << std::endl;
-//}
