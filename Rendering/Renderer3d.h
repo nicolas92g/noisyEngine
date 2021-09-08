@@ -28,8 +28,11 @@ namespace ns {
 			bloomIteration = 3;
 			showNormals = false;
 			renderSkybox = false;
+			shadows = true;
 			shadowPrecision = 1000;
 			shadowSize = 100;
+			exposure = 1.f;
+			ambientIntensity = 1.f;
 		}
 
 		unsigned int directionalLightsMax;
@@ -41,8 +44,11 @@ namespace ns {
 		float bloomThreshold;
 		bool showNormals;
 		bool renderSkybox;
+		bool shadows;
 		int shadowPrecision;
 		int shadowSize;
+		float exposure;
+		float ambientIntensity;
 	};
 
 	class Renderer3d

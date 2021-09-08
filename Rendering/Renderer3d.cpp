@@ -108,8 +108,8 @@ void ns::Renderer3d::startRendering()
 	draw();
 
 	//render dynamic shadows
-	//updateDynamicShadow(cam_.position(), scene_.directionalLight().direction());
-
+	if (info_.shadows)
+		updateDynamicShadow(cam_.position(), scene_.directionalLight().direction());
 }
 
 void ns::Renderer3d::finishRendering()
@@ -226,6 +226,7 @@ void ns::Renderer3d::finishRendering()
 	FinalPostProcessingStage_->use();
 	FinalPostProcessingStage_->set("inputTexture", 1);
 	FinalPostProcessingStage_->set("enableFXAA", info_.FXAA);
+	FinalPostProcessingStage_->set("exposure", info_.exposure);
 
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, result_);
@@ -311,6 +312,9 @@ void ns::Renderer3d::importFromYAML()
 		info_.bloomThreshold = conf["renderer"]["bloomThreshold"].as<float>();
 		info_.shadowPrecision = conf["renderer"]["shadowPrecision"].as<int>();
 		info_.shadowSize = conf["renderer"]["shadowSize"].as<int>();
+		info_.exposure = conf["renderer"]["exposure"].as<float>();
+		info_.shadows = conf["renderer"]["shadows"].as<bool>();
+		info_.ambientIntensity = conf["renderer"]["ambientIntensity"].as<float>();
 	}
 	catch(...){}
 }
@@ -325,6 +329,9 @@ void ns::Renderer3d::exportIntoYAML()
 	conf["renderer"]["bloomThreshold"] = info_.bloomThreshold;
 	conf["renderer"]["shadowPrecision"] = info_.shadowPrecision;
 	conf["renderer"]["shadowSize"] = info_.shadowSize;
+	conf["renderer"]["exposure"] = info_.exposure;
+	conf["renderer"]["shadows"] = info_.shadows;
+	conf["renderer"]["ambientIntensity"] = info_.ambientIntensity;
 }
 
 void ns::Renderer3d::initPhysicallyBasedRenderingSystem(const std::string& envHdrMapPath)
@@ -398,7 +405,8 @@ void ns::Renderer3d::setDynamicUniforms(ns::Shader& shader) const
 	glBindTexture(GL_TEXTURE_2D, brdfMap_);
 
 	glActiveTexture(GL_TEXTURE0 + NS_SHADOW_MAP_SAMPLER);
-	glBindTexture(GL_TEXTURE_2D, shadowMap_);
+	if(info_.shadows) glBindTexture(GL_TEXTURE_2D, shadowMap_);
+	else glBindTexture(GL_TEXTURE_2D, 0);
 
 	shader.set("projView", cam_.projectionView());
 	shader.set("model", glm::scale(glm::vec3(1)));
@@ -409,6 +417,8 @@ void ns::Renderer3d::setDynamicUniforms(ns::Shader& shader) const
 	shader.set<int>("spotLightNumber", SpotLight::number());
 
 	shader.set("lightSpaceMatrix", lightMatrix_);
+	shader.set("shadows", info_.shadows);
+	shader.set("ambientIntensity", info_.ambientIntensity);
 }
 
 void ns::Renderer3d::initShadowPipeline()

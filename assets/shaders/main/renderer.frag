@@ -82,6 +82,8 @@ uniform samplerCube irradianceMap;
 uniform samplerCube prefilteredEnvironmentMap;
 uniform sampler2D brdfLutMap;
 uniform sampler2D shadowMap;
+uniform bool shadows;
+uniform float ambientIntensity = 1;
 
 float DistributionGGX(vec3 N, vec3 H, float a);
 float GeometrySchlickGGX(float NdotV, float k);
@@ -128,11 +130,11 @@ void main(){
     vec3 kD = 1.0 - kS;
     kD *= 1.0 - pbr.metallic;
 
-    vec3 irradiance = texture(irradianceMap, pbr.normal).rgb;
+    vec3 irradiance = texture(irradianceMap, pbr.normal).rgb * ambientIntensity;
     vec3 diffuseValue = irradiance * pbr.albedo;
 
     const float MAX_REFLECTION_LOD = 4.0;
-    vec3 prefilteredColor = textureLod(prefilteredEnvironmentMap, R,  pbr.roughness * MAX_REFLECTION_LOD).rgb;
+    vec3 prefilteredColor = textureLod(prefilteredEnvironmentMap, R,  pbr.roughness * MAX_REFLECTION_LOD).rgb * ambientIntensity;
     vec2 brdf  = texture(brdfLutMap, vec2(max(dot(pbr.normal, V), 0.0), pbr.roughness)).rg;
     vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
 
@@ -232,7 +234,7 @@ vec3 CalcDirLight(DirLight light, vec3 F0, vec3 viewDir, vec4 lightFragmentPosit
         
     float NdotL = max(dot(pbr.normal, LightDir), 0.0);  
     
-    float shadow = calcShadow(lightFragPos, pbr.normal, LightDir);
+    float shadow = (shadows) ? calcShadow(lightFragPos, pbr.normal, LightDir) : 0;
 
     return (1.0 - shadow) * ((kD * pbr.albedo / PI + specular) * radiance * NdotL);
 }

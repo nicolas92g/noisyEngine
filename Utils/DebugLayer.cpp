@@ -438,6 +438,12 @@ void ns::Debug::rendererMenu()
 		SameLine();
 		Checkbox("##FXAA", &renderer_->info_.FXAA);
 		Separator();
+		Text("exposure"); SameLine();
+		SliderFloat("##exposure", &renderer_->info_.exposure, .1f, 2.f);
+		Separator();
+		Text("ambient intensity"); SameLine();
+		SliderFloat("##ambientIntensity", &renderer_->info_.ambientIntensity, 0, 2);
+		Separator();
 		Text("Bloom iterations");
 		SameLine();
 		SliderInt("##bloom it", &renderer_->info_.bloomIteration, 0, 8);
@@ -462,11 +468,14 @@ void ns::Debug::rendererMenu()
 		Checkbox("##display skybox", &renderer_->info_.renderSkybox);
 		Separator();
 
-		Text("shadows :");
-		Text("precision :"); SameLine(); 
-		SliderInt("##shadowPrecision", &renderer_->info_.shadowPrecision, 50, maxTextureSize_);
-		Text("box size :"); SameLine();
-		SliderInt("##shadow box size", &renderer_->info_.shadowSize, 10, 1000);
+		Checkbox("##shadows", &renderer_->info_.shadows);
+		SameLine(); Text("shadows :");
+		if (renderer_->info_.shadows) {
+			Text("precision :"); SameLine();
+			SliderInt("##shadowPrecision", &renderer_->info_.shadowPrecision, 50, maxTextureSize_);
+			Text("box size :"); SameLine();
+			SliderInt("##shadow box size", &renderer_->info_.shadowSize, 10, 1000);
+		}
 		
 		glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
 	}

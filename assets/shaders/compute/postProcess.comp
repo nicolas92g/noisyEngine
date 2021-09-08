@@ -9,7 +9,7 @@
 layout( local_size_x = NS_NUM_WORK_GROUP_X, local_size_y = NS_NUM_WORK_GROUP_Y) in;
 layout(rgba16f, binding = 0) uniform image2D outTex;
 
-uniform float exposure = 1.0;
+uniform float exposure = 1;
 
 //input
 uniform sampler2D inputTexture;
@@ -87,10 +87,10 @@ void postProcessing(inout vec4 color, vec2 uv){
     color.rgb = (enableFXAA) ? FXAA(uv) : texture2D(inputTexture, uv).rgb;
 
 	//// exposure tone mapping
-    //color.rgb = vec3(1.0) - exp(-color.rgb * exposure);
+    color.rgb = vec3(1.0) - exp(-color.rgb * exposure);
 
     // gamma correction and aces 
-    color.rgb = pow(aces(color.rgb), vec3(1.0 / 2.2));
+    color.rgb = pow((color.rgb), vec3(1.0 / 2.2));
     color.a = 1;
 }
 
