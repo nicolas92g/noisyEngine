@@ -16,7 +16,7 @@ void ns::LightBase_::setColor(const glm::vec3& color)
 	color_ = color;
 }
 
-glm::vec3 ns::LightBase_::color() const
+const glm::vec3& ns::LightBase_::color() const
 {
 	return color_;
 }

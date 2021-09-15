@@ -54,7 +54,8 @@ void ns::Object3d::setParent(Object3d* parent)
 		Debug::get() << "error : try to parent an object with himself !\n";
 		return;
 	}
-	parent_ = parent;
+	if (parent)
+		parent_ = parent;
 }
 
 void ns::Object3d::removeParent()
@@ -111,9 +112,11 @@ glm::vec3 ns::DirectionalObject3d::direction()
 	if (!parent_.has_value()) return direction_;
 
 	using namespace glm;
-	//if parent is a geometric object 
+#	if NS_GEOMETRIC_OBJECT3D_STORE_ALL_MATRICES
+	//if parent is a geometric object
 	GeometricObject3d* ptr = dynamic_cast<GeometricObject3d*>(parent_.value());
 	if (ptr) return vec3(ptr->rotationMatrix() * vec4(direction_, 1));
+#	endif
 
 	//if parent is a directional object
 	DirectionalObject3d* ptr2 = dynamic_cast<DirectionalObject3d*>(parent_.value());
@@ -137,6 +140,10 @@ ns::GeometricObject3d::GeometricObject3d(const glm::vec3& position, const glm::v
 
 void ns::GeometricObject3d::update()
 {
+#if not NS_GEOMETRIC_OBJECT3D_STORE_ALL_MATRICES
+	static glm::mat4 translationMatrix_, scaleMatrix_, rotationMatrix_;
+#endif // NS_GEOMETRIC_OBJECT3D_STORE_ALL_MATRICES
+
 	translationMatrix_ = glm::translate(WorldPosition());
 	scaleMatrix_ = glm::scale(scale_);
 	rotationMatrix_ = glm::rotate(angle_, axis_);
@@ -148,10 +155,10 @@ void ns::GeometricObject3d::setScale(const glm::vec3& newScale)
 	scale_ = newScale;
 }
 
-void ns::GeometricObject3d::setRotation(const glm::vec3& axe, float angleInRadians)
+void ns::GeometricObject3d::setRotation(const glm::vec3& axis, float angleInRadians)
 {
 	angle_ = angleInRadians;
-	axis_ = axe;
+	axis_ = glm::normalize(axis);
 }
 
 glm::vec3 ns::GeometricObject3d::scale() const
@@ -174,6 +181,7 @@ const glm::mat4& ns::GeometricObject3d::modelMatrix() const
 	return modelMatrix_;
 }
 
+#if NS_GEOMETRIC_OBJECT3D_STORE_ALL_MATRICES
 const glm::mat4& ns::GeometricObject3d::translationMatrix() const
 {
 	return translationMatrix_;
@@ -188,3 +196,4 @@ const glm::mat4& ns::GeometricObject3d::rotationMatrix() const
 {
 	return rotationMatrix_;
 }
+#endif

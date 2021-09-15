@@ -21,13 +21,13 @@
 
 <H3>to do list</H3>
 
-<H5>Majors Implementations needed</H5>
-
+<H4>Majors Implementations needed</H4>
 - animations
 - physX (collision and physics simulation)
-- transparent material support
+- 2D simple interface engine
 
 
-
-<H6>Minors Implementations needed</H6>
+<H5>Minors Implementations needed</H5>
 - point lights shadows
+- soft shadows
+- transparent material support

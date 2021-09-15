@@ -12,7 +12,7 @@
 #include <iostream>
 
 /**
- * @brief contain all the classes that are able to generate a deformed plane world
+ * @brief (TO DO) contain all the classes that are able to generate a plane world with a height map
  */
 namespace ns::Plane {
 

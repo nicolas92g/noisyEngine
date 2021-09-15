@@ -9,13 +9,19 @@
 #define USE_IMGUI
 #endif // !NDEBUG
 
+#ifdef USE_IMGUI
+#define NS_TEXTURE_VIEW_STORE_POINTER
+#endif
 
+//when false allow to save almost 200 bytes on each geometric object3d but this remove access to the translation, scaling and rotation matrix
+#define NS_GEOMETRIC_OBJECT3D_STORE_ALL_MATRICES false
 
-#include <glm/glm.hpp>
 
 //macros to make sintax faster and more readable
 #define dout ns::Debug::get()
 #define newl '\n'
+
+#include <glm/glm.hpp>
 
 namespace ns{
 	using LengthType = float;

@@ -3,15 +3,15 @@
 ns::Scene::Scene(
 	DirectionalLight& dirLight,
 	const std::vector<DrawableObject3d*>& entities,
-	const std::vector<DrawableObject3d*>& stationaries,
+	const std::vector<DrawableObject3d*>& statics,
 	const std::vector<attenuatedLightBase_*>& lights)
 	:
 	entities_(entities),
-	stationaries_(stationaries),
+	statics_(statics),
 	lights_(lights),
 	dirLight_(&dirLight)
 {
-	updateStationaries();
+	updateStatics();
 }
 
 ns::Scene::Scene(const Scene& other)
@@ -29,9 +29,9 @@ uint32_t ns::Scene::numEntities()
 	return static_cast<uint32_t>(entities_.size());
 }
 
-uint32_t ns::Scene::numStationaries()
+uint32_t ns::Scene::numStatics()
 {
-	return static_cast<uint32_t>(stationaries_.size());
+	return static_cast<uint32_t>(statics_.size());
 }
 
 uint32_t ns::Scene::numLights()
@@ -55,9 +55,9 @@ void ns::Scene::draw(const ns::Shader& shader) const
 	glDepthFunc(GL_LESS);
 
 	//draw motionless Objects
-	for (const DrawableObject3d* stationary : stationaries_)
+	for (const DrawableObject3d* staticObject : statics_)
 	{
-		stationary->draw(shader);
+		staticObject->draw(shader);
 	}
 
 	//draw entities
@@ -76,12 +76,12 @@ void ns::Scene::update()
 	}
 }
 
-void ns::Scene::updateStationaries()
+void ns::Scene::updateStatics()
 {
 	//update motionless Objects
-	for (DrawableObject3d* motionLess : stationaries_)
+	for (DrawableObject3d* staticObject : statics_)
 	{
-		motionLess->update();
+		staticObject->update();
 	}
 }
 
@@ -100,19 +100,19 @@ void ns::Scene::clearEntities()
 	entities_.clear();
 }
 
-void ns::Scene::addStationary(DrawableObject3d& object)
+void ns::Scene::addStatic(DrawableObject3d& object)
 {
-	addElement(&object, stationaries_);
+	addElement(&object, statics_);
 }
 
-void ns::Scene::removeStationary(DrawableObject3d& object)
+void ns::Scene::removeStatic(DrawableObject3d& object)
 {
-	removeElement(&object, stationaries_);
+	removeElement(&object, statics_);
 }
 
-void ns::Scene::clearStationaries()
+void ns::Scene::clearStatics()
 {
-	stationaries_.clear();
+	statics_.clear();
 }
 
 void ns::Scene::addLight(attenuatedLightBase_& light)
@@ -152,8 +152,8 @@ void ns::Scene::operator+=(const Scene& other)
 	if(other.entities_.size())
 		entities_.insert(entities_.end(), other.entities_.begin(), other.entities_.end());
 
-	if(other.stationaries_.size())
-		stationaries_.insert(stationaries_.end(), other.stationaries_.begin(), other.stationaries_.end());
+	if(other.statics_.size())
+		statics_.insert(statics_.end(), other.statics_.begin(), other.statics_.end());
 	
 	if(other.lights_.size())
 		lights_.insert(lights_.end(), other.lights_.begin(), other.lights_.end());
@@ -162,7 +162,7 @@ void ns::Scene::operator+=(const Scene& other)
 void ns::Scene::operator=(const Scene& other)
 {
 	entities_ = other.entities_;
-	stationaries_ = other.stationaries_;
+	statics_ = other.statics_;
 	lights_ = other.lights_;
 	dirLight_ = other.dirLight_;
 }
@@ -170,7 +170,7 @@ void ns::Scene::operator=(const Scene& other)
 void ns::Scene::operator=(Scene&& other) noexcept
 {
 	entities_ = std::move(other.entities_);
-	stationaries_ = std::move(other.stationaries_);
+	statics_ = std::move(other.statics_);
 	lights_ = std::move(other.lights_);
 	dirLight_ = other.dirLight_;
 }

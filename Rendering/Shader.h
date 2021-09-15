@@ -17,14 +17,17 @@
 #define RECOMPILATION_KEY GLFW_KEY_X
 #endif // NDEBUG
 
-/**
- * @brief compile and use a shader program in glsl
- */
+
 namespace ns {
+	/**
+	* @brief compile and use a shader program in glsl
+	*/
 	class Shader
 	{
 	public:
-
+		/**
+		 * @brief allow to describe the name of a shader stage
+		 */
 		enum class Stage
 		{
 			Vertex,
@@ -32,41 +35,58 @@ namespace ns {
 			Geometry,
 			Compute
 		};
+		/**
+		 * @brief this struct allow to create a #define directly in the copy of the source code 
+		 * if the define is already existing, the value will be modified
+		 * the stage is the file where the #define has to be written (fragment shader, vertex shader or geometry shader) (compute shader)
+		 */
 		struct Define {
 			std::string name;
 			std::string value;
 			Stage stage;
 		};
 		/**
-		 * @brief read all the files in inputs and compile them as glsl shaders
+		 * @brief read all the files and compile them as glsl shaders
+		 * if you don't set the geometry stage, the default geometry shader will be used
+		 * you can also add an array of defines that are written in the source code as #define name value
+		 * reloadable is useful for debugging to reload the shader while the program is running
 		 * errors of compiling are logs in the shell
 		 * \param vertexPath
 		 * \param fragmentPath
 		 * \param geometryPath
+		 * \param defines
+		 * \param reloadable
 		 */
 		Shader(const char* vertexPath, const char* fragmentPath, const char* geometryPath = nullptr, const std::vector<Define>& defines = {}, bool reLoadable = false);
 		/**
 		 * @brief compile a compute shader
+		 * defines has to have a stage value equal to Compute
+		 * you can also reload compute shaders for debugging usage
 		 * \param computeShaderFilePath
 		 */
 		Shader(const char* computeShaderFilePath, const std::vector<Define>& defines = {}, bool reLoadable = false);
+		/**
+		 * @brief delete the shader
+		 */
 		~Shader();
-		
 		/**
 		 * bind this shader
 		 * need this line before a draw call to render with this shader
 		 */
 		void use() const;
-
 		template<typename T>
-		/**
+		/**  
 		 * change the value of a uniform var in the shader
-		 * types supported are : int, unsigned int, bool, float, glm::vec2, glm::vec3, glm::vec4, glm::mat4
+		 * types supported are : int, unsigned int, bool, float, glm::vec2, glm::vec3, glm::vec4, glm::mat4, glm::ivec2, glm::ivec3, glm::ivec4
+		 * this->use() is call in this method
 		 * \param name
 		 * \param value
 		 */
 		void set(const char* name, T value) const;
-
+		/**
+		 * @brief debug function that check a key to reload the shaders that are reloadable
+		 * \param window
+		 */
 		static void update(const Window& window);
 		
 	protected:

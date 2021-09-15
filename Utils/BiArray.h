@@ -7,7 +7,7 @@
 namespace ns {
 	template<typename T>
 	/**
-	 * @brief biarray stand for bi-dimensional-array, the width and the height of the array are given in the constructor and then the array can't change of it's size.
+	 * @brief biarray stand for bi-dimensional-array, the width and the height of the array are given in the constructor and then the array can't be resized.
 	 * You can use it as a standard bi-dimensional array but it use a single 1-dimensional array to store all of the data so you can also use it as a standard 1 dim array which has a size of 
 	 * width time height.
 	 * the only dynamic heap allocation is in the constructor, all the others function are used to access and modify the array data
@@ -132,7 +132,8 @@ namespace ns {
 		 * @briefs store a pointer to an element of a biarray
 		 * this Iterator class is only made to be able to use the for loop : for(const auto& element : biarrayName) 
 		 */
-		class Iterator {
+		class Iterator 
+		{
 		public:
 			Iterator(T* pointer);
 			T& operator*();

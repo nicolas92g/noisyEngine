@@ -22,42 +22,6 @@ ns::Texture::Texture(const char* textureFilePath)
 	load();
 }
 
-ns::Texture::Texture(aiTexture* const assimpTexture)
-	:
-	loaded_(true),
-	filePath_(NS_EMBEMBEDDED_FILEPATH_NAME),
-	numberOfChannels_(4)
-{
-	Debug::get() << "embedded files are not supported yet !\n";
-	return;
-	glGenTextures(1, &id_);
-	glBindTexture(GL_TEXTURE_2D, id_);
-
-	width_ = assimpTexture->mWidth;
-	height_ = assimpTexture->mHeight;
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-	if (height_) {
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width_, height_, 0, GL_RGBA, GL_UNSIGNED_BYTE, assimpTexture->pcData);	
-	}
-	else if(assimpTexture->CheckFormat("png")){
-		glCompressedTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_R11_EAC,
-			sqrt(width_), sqrt(width_), 0, width_, assimpTexture->pcData);
-	}
-	else {
-		Debug::get() << "can't load compressed texture under format :" << assimpTexture->achFormatHint << "\n";
-	}
-
-	glGenerateMipmap(GL_TEXTURE_2D);
-
-	glBindTexture(GL_TEXTURE_2D, 0);
-}
-
 bool ns::Texture::isLoaded() const
 {
 	return loaded_;
@@ -163,16 +127,6 @@ void ns::Texture::load()
 
 void ns::Texture::destroy()
 {
-#	ifndef NDEBUG
-
-	if (filePath_ != NS_EMBEMBEDDED_FILEPATH_NAME) {
-		auto it = std::find(alreadyLoadedTextures.begin(), alreadyLoadedTextures.end(), filePath_);
-		if (it != alreadyLoadedTextures.end())
-			alreadyLoadedTextures.erase(it);
-	}
-
-#	endif // !NDEBUG
-
 	glDeleteTextures(1, &id_);
 }
 

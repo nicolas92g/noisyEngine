@@ -279,11 +279,6 @@ void ns::Renderer3d::draw()
 #	endif // !NDEBUG
 }
 
-void ns::Renderer3d::updateStationaries()
-{
-	scene_.updateStationaries();
-}
-
 void ns::Renderer3d::setCamera(Camera& camera)
 {
 	cam_ = camera;

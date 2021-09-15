@@ -17,7 +17,9 @@
 #include <iostream>
 
 namespace ns {
-
+	/**
+	 * @brief 3D renderer configuration
+	 */
 	struct Renderer3dCreateInfo {
 		Renderer3dCreateInfo(const std::string& envHdrMapPath = NS_PATH"assets/textures/HDR_029_Sky_Cloudy_Ref.hdr") {
 			directionalLightsMax = 5;
@@ -50,23 +52,63 @@ namespace ns {
 		float exposure;
 		float ambientIntensity;
 	};
-
+	/**
+	 * @brief allow to render a scene with a pbr simulation.
+	 * this renderer implement :
+	 * - pbr material system
+	 * - normal mapping
+	 * - directional light shadow mapping
+	 * - hdr pipeline & bloom
+	 * - Fast approximate Anti-Aliasing
+	 * - exposure tone-mapping
+	 */
 	class Renderer3d
 	{
 	public:
+		/**
+		 * @brief create the renderer with the object needed by it, (those object have to survive all along the renderer life)
+		 * this constructor take also the configuration
+		 * \param window
+		 * \param camera
+		 * \param scene
+		 * \param info
+		 */
 		Renderer3d(Window& window, Camera& camera, Scene& scene, const Renderer3dCreateInfo& info = Renderer3dCreateInfo());
+		/**
+		 * @brief delete all the object allocated by the renderer on the GPU and the CPU
+		 */
 		~Renderer3d();
-
+		/**
+		 * @brief render the rasterization on a custom framebuffer
+		 * rendering is separated in 2 methods to allow to render other things on this custom FBO
+		 */
 		void startRendering();
+		/**
+		 * @brief finish the rendering by doing the post-processing (bloom, FXAA, etc...)
+		 */
 		void finishRendering();
-
-		void updateStationaries();
-
+		/**
+		 * @brief change the camera of the renderer
+		 * \param camera
+		 */
 		void setCamera(Camera& camera);
+		/**
+		 * @brief change the scene container
+		 * \param scene
+		 */
 		void setScene(Scene& scene);
+		/**
+		 * @brief get the settings of this renderer
+		 * \return 
+		 */
 		Renderer3dCreateInfo& settings();
-
+		/**
+		 * @brief import the renderer settings from the configuration file
+		 */
 		void importFromYAML();
+		/**
+		 * @brief export the renderer settings into the configuration file
+		 */
 		void exportIntoYAML();
 
 	protected:

@@ -29,14 +29,15 @@ void main(){
     {
         for(int i = 1; i < 5; ++i)
         {
+           
             const float step_ = i * texel.x * stepFac;
             const vec2 pos = uv + vec2(step_, 0);
             const vec2 neg = uv - vec2(step_, 0);
-
+        
             
             if(pos.x < 1)
                 result += texture(inputTexture, pos).rgb * weight[i];
-
+        
             if(neg.x > 0.0)
                 result += texture(inputTexture, neg).rgb * weight[i];
         }
