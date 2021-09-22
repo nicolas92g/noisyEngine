@@ -126,6 +126,11 @@ namespace ns {
 		 */
 		DirectionalLight& directionalLight();
 		/**
+		 * @brief return the only directional light of the scene as a const reference
+		 * \return
+		 */
+		const DirectionalLight& getDirectionalLight() const;
+		/**
 		 * @brief add the objects from another scene to this scene
 		 * \param other
 		 */

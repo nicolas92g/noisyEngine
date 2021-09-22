@@ -16,15 +16,15 @@
 #define NS_BRDF_LUT_MAP							30
 #define NS_SHADOW_MAP_SAMPLER					31
 
-ns::Renderer3d::Renderer3d(Window& window, Camera& camera, Scene& scene, const Renderer3dCreateInfo& info)
+ns::Renderer3d::Renderer3d(Window& window, Camera& camera, Scene& scene, const Renderer3dConfigInfo& info)
 	:
 	cam_(camera),
 	win_(window),
-	scene_(scene),
+	scene_(&scene),
 	info_(info),
-	runTicks(true),
 	skyBox(cam_, 0),
-	previousResolution_(win_.size())
+	previousResolution_(win_.size()),
+	dirtMask_(NS_PATH"assets/textures/dirtMask.jpg")
 {
 	std::vector<ns::Shader::Define> defines{
 		{"MAX_DIR_LIGHTS", std::to_string(info_.directionalLightsMax), ns::Shader::Stage::Fragment},
@@ -42,7 +42,6 @@ ns::Renderer3d::Renderer3d(Window& window, Camera& camera, Scene& scene, const R
 
 
 	initPhysicallyBasedRenderingSystem(info.environmentMap);
-	launchTickThread();
 
 	glDisable(GL_MULTISAMPLE);
 	//transparency
@@ -60,8 +59,6 @@ ns::Renderer3d::Renderer3d(Window& window, Camera& camera, Scene& scene, const R
 
 ns::Renderer3d::~Renderer3d()
 {
-	runTicks = false;
-	tickThread_->join();
 
 	destroyBloomPipeline();
 
@@ -80,11 +77,18 @@ void ns::Renderer3d::startRendering()
 	//enable depth testing
 	glEnable(GL_DEPTH_TEST);
 
+	//render dynamic shadows
+	if (info_.shadows)
+		updateDynamicShadow(cam_.position(), scene_->getDirectionalLight().direction());
+
 	//bind our custom FBO
 	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer_);
 
 	//clear framebuffer color and depth attachements
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	//set viewport size
+	glViewport(0, 0, win_.width(), win_.height());
 
 	//if resolution changed
 	if (previousResolution_ != win_.size()) {
@@ -107,9 +111,7 @@ void ns::Renderer3d::startRendering()
 	//render the scene in the main FBO
 	draw();
 
-	//render dynamic shadows
-	if (info_.shadows)
-		updateDynamicShadow(cam_.position(), scene_.directionalLight().direction());
+	
 }
 
 void ns::Renderer3d::finishRendering()
@@ -122,6 +124,10 @@ void ns::Renderer3d::finishRendering()
 	if (info_.bloomIteration) {
 		bloomPrefilteringStage_->set("threshold", info_.bloomThreshold);
 		//prefiltering
+		glActiveTexture(GL_TEXTURE2);
+		dirtMask_.bind();
+		bloomPrefilteringStage_->set("dirtMask", 2);
+
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, colorAttachement_);
 		bloomPrefilteringStage_->set("inputTexture", 1);
@@ -162,6 +168,10 @@ void ns::Renderer3d::finishRendering()
 
 			//vertical gaussian blur
 			bloomDownsamplingStage_->set("horizontal", false);
+
+			glActiveTexture(GL_TEXTURE2);
+			dirtMask_.bind();
+			bloomDownsamplingStage_->set("dirtMask", 2);
 
 			glActiveTexture(GL_TEXTURE1);
 			glBindTexture(GL_TEXTURE_2D, bloomDownsampled_[i].id2);
@@ -247,7 +257,7 @@ void ns::Renderer3d::finishRendering()
 	
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, result_);
-	//glBindTexture(GL_TEXTURE_2D, shadowMap_);
+	//glBindTexture(GL_TEXTURE_2D, colorAttachement_);
 
 	screenShader_->use();
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
@@ -260,20 +270,18 @@ void ns::Renderer3d::draw()
 	
 	if (info_.renderSkybox) skyBox.draw();
 
-	std::scoped_lock<std::mutex> lock(sceneMutex_);
-
-	scene_.sendLights(*pbr_);
+	scene_->sendLights(*pbr_);
 
 	setDynamicUniforms(*pbr_);
 
-	scene_.draw(*pbr_);
+	scene_->draw(*pbr_);
 
 #	ifndef NDEBUG
 
 	if (info_.showNormals) {
 		normalVisualizer_->set<glm::mat4>("view", cam_.view());
 		normalVisualizer_->set<glm::mat4>("projection", cam_.projection());
-		scene_.draw(*normalVisualizer_);
+		scene_->draw(*normalVisualizer_);
 	}
 
 #	endif // !NDEBUG
@@ -286,10 +294,10 @@ void ns::Renderer3d::setCamera(Camera& camera)
 
 void ns::Renderer3d::setScene(Scene& scene)
 {
-	scene_ = scene;
+	scene_ = &scene;
 }
 
-ns::Renderer3dCreateInfo& ns::Renderer3d::settings()
+ns::Renderer3dConfigInfo& ns::Renderer3d::settings()
 {
 	return info_;
 }
@@ -359,29 +367,6 @@ void ns::Renderer3d::initPhysicallyBasedRenderingSystem(const std::string& envHd
 	initShadowPipeline();
 
 	createFramebuffer();
-}
-
-void ns::Renderer3d::launchTickThread()
-{
-	using namespace std;
-	tickThread_ = make_shared<thread>(&Renderer3d::tickThreadFunction, this);
-}
-
-void ns::Renderer3d::tickThreadFunction()
-{
-	using namespace std;
-	using namespace std::chrono;
-	using namespace std::chrono_literals;
-	static constexpr auto delta = duration_cast<nanoseconds>(2ms);
-
-	while (runTicks){
-		const auto time = high_resolution_clock::now();
-		{
-			std::scoped_lock<std::mutex> lock(sceneMutex_);
-			scene_.update();
-		}
-		this_thread::sleep_for(delta - (time - high_resolution_clock::now()));
-	}
 }
 
 void ns::Renderer3d::setDynamicUniforms(ns::Shader& shader) const
@@ -463,7 +448,7 @@ void ns::Renderer3d::updateDynamicShadow(const glm::vec3& position, const glm::v
 
 	shadowShader_->set("lightSpaceMatrix", lightMatrix_);
 
-	scene_.draw(*shadowShader_);
+	scene_->draw(*shadowShader_);
 
 	glCullFace(GL_BACK);
 }

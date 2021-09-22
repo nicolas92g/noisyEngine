@@ -223,6 +223,11 @@ void ns::Window::maximise()
     maximised_ = true;
 }
 
+void ns::Window::iconify()
+{
+    glfwIconifyWindow(window_);
+}
+
 void ns::Window::setFullscreen(bool fullscreen)
 {
     if (fullscreen and !fullscreen_) {

@@ -133,6 +133,10 @@ namespace ns {
 		 */
 		void maximise();
 		/**
+		 * @brief iconify the window
+		 */
+		void iconify();
+		/**
 		 * @brief set the window in fullscreen or back in window
 		 * \param fullscreen
 		 */

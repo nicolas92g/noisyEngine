@@ -105,7 +105,7 @@ namespace ns {
 		 * @brief return the direction
 		 * \return 
 		 */
-		glm::vec3 direction();
+		glm::vec3 direction() const;
 
 	protected:
 		glm::vec3 direction_;

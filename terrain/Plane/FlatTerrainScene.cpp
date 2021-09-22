@@ -61,7 +61,7 @@ void ns::Plane::FlatTerrainScene::update(const GridPositionType& centerPosition)
 		chunk.mesh = std::make_shared<ns::Mesh>(data.meshData.vertices, data.meshData.indices, Material::getDefault(), info);
 		chunk.object = std::make_shared<ns::DrawableObject3d>(*chunk.mesh);
 
-		scene_.addStationary(*chunk.object);
+		scene_.addStatic(*chunk.object);
 		chunk.wasProcessed = true;
 	}
 

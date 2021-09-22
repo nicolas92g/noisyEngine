@@ -137,6 +137,14 @@ ns::TextureView::TextureView(Texture& textureToSee) :
 #endif
 {}
 
+ns::TextureView::TextureView(GLuint Texture2dId)
+	:
+	textureId_(Texture2dId)
+#ifdef NS_TEXTURE_VIEW_STORE_POINTER
+	, ptr_(nullptr)
+#endif
+{}
+
 void ns::TextureView::operator=(Texture& textureToSee)
 {
 	this->textureId_ = textureToSee.id_;

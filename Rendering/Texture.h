@@ -87,10 +87,15 @@ namespace ns {
 	class TextureView {
 	public:
 		/**
-		 * @brief create the texture view with a real texture
+		 * @brief create the texture view with a 2d texture
 		 * \param textureToSee
 		 */
 		TextureView(Texture& textureToSee);
+		/**
+		 * @brief create a texture view from an openGl id
+		 * \param Texture2dId
+		 */
+		TextureView(GLuint Texture2dId);
 		/**
 		 * @brief reset the value of the texture view thanks to a real texture
 		 * \param textureToSee

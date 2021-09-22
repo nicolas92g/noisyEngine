@@ -147,6 +147,11 @@ ns::DirectionalLight& ns::Scene::directionalLight()
 	return *dirLight_;
 }
 
+const ns::DirectionalLight& ns::Scene::getDirectionalLight() const
+{
+	return *dirLight_;
+}
+
 void ns::Scene::operator+=(const Scene& other)
 {
 	if(other.entities_.size())

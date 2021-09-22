@@ -37,7 +37,6 @@ namespace ns {
 		 * \param modelFilePath
 		 */
 		Model(const std::string& modelFilePath);
-
 		Model(const Model&) = delete;
 		Model& operator=(const Model&) = delete;
 		/**

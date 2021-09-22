@@ -9,9 +9,13 @@ layout(rgba16f, binding = 0) uniform image2D outTex;
 uniform bool horizontal;//if true will blur only horizontaly else verticaly
 
 uniform sampler2D inputTexture;//texture to blur
-#define FACTOR 1  
+uniform sampler2D dirtMask;
+
+#define FACTOR .9  
 const float weight[5] = const float[] (0.227027 * FACTOR, 0.1945946 * FACTOR, 0.1216216 * FACTOR, 0.054054 * FACTOR, 0.016216 * FACTOR);
-const float stepFac = 1;
+const float stepFac = .9;
+
+const float dirtMaskFactor = .00f;
 
 void main(){
 	const ivec2 pixel_coords = ivec2(gl_GlobalInvocationID.xy);//pixel coordinates
@@ -61,5 +65,6 @@ void main(){
 
 	vec4 color = vec4(result, 1);
     
-	imageStore(outTex, pixel_coords, color);
+    
+	imageStore(outTex, pixel_coords, color /*+ imageLoad(outTex, pixel_coords) * .1*/);
 }

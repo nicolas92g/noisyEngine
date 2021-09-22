@@ -20,8 +20,8 @@ namespace ns {
 	/**
 	 * @brief 3D renderer configuration
 	 */
-	struct Renderer3dCreateInfo {
-		Renderer3dCreateInfo(const std::string& envHdrMapPath = NS_PATH"assets/textures/HDR_029_Sky_Cloudy_Ref.hdr") {
+	struct Renderer3dConfigInfo {
+		Renderer3dConfigInfo(const std::string& envHdrMapPath = NS_PATH"assets/textures/HDR_029_Sky_Cloudy_Ref.hdr") {
 			directionalLightsMax = 5;
 			pointLightsMax = 100;
 			spotLightsMax = 50;
@@ -73,7 +73,7 @@ namespace ns {
 		 * \param scene
 		 * \param info
 		 */
-		Renderer3d(Window& window, Camera& camera, Scene& scene, const Renderer3dCreateInfo& info = Renderer3dCreateInfo());
+		Renderer3d(Window& window, Camera& camera, Scene& scene, const Renderer3dConfigInfo& info = Renderer3dConfigInfo());
 		/**
 		 * @brief delete all the object allocated by the renderer on the GPU and the CPU
 		 */
@@ -101,7 +101,7 @@ namespace ns {
 		 * @brief get the settings of this renderer
 		 * \return 
 		 */
-		Renderer3dCreateInfo& settings();
+		Renderer3dConfigInfo& settings();
 		/**
 		 * @brief import the renderer settings from the configuration file
 		 */
@@ -112,15 +112,15 @@ namespace ns {
 		void exportIntoYAML();
 
 	protected:
-		Renderer3dCreateInfo info_;
+		Renderer3dConfigInfo info_;
 
 		//physically based rendering system
 		void draw();
 
-		unsigned int environmentMap_;
-		unsigned int preFilteredEnvironmentMap_;
-		unsigned int irradianceMap_;
-		unsigned int brdfMap_;
+		GLuint environmentMap_;
+		GLuint preFilteredEnvironmentMap_;
+		GLuint irradianceMap_;
+		GLuint brdfMap_;
 
 		void loadEnvironmentMap(const char* path, int res);
 		void updateBRDFpreComputing();
@@ -138,20 +138,13 @@ namespace ns {
 		GLuint planeBuffer_;
 		void createPlaneMesh();
 
-		void initPhysicallyBasedRenderingSystem(const std::string& envHdrMapPath);
-
 		//rendering system
+		void initPhysicallyBasedRenderingSystem(const std::string& envHdrMapPath);
 		std::unique_ptr<ns::Shader> pbr_;
 		Camera& cam_;
 		Window& win_;
-		Scene& scene_;
+		const Scene* scene_;
 		glm::ivec2 previousResolution_;
-
-		std::shared_ptr<std::thread> tickThread_;
-		std::mutex sceneMutex_;
-		void launchTickThread();
-		void tickThreadFunction();
-		bool runTicks;
 
 		void setDynamicUniforms(ns::Shader& shader) const;
 
@@ -189,6 +182,7 @@ namespace ns {
 		std::vector<Image2d> bloomUpsampled_;	//all the upsampled textures
 		GLuint result_;							//texture with the window resolution
 		int previousBloomIterationSetting_;
+		Texture dirtMask_;
 
 		void initBloomPipeline();
 		void resizeBloomPipeline();
@@ -200,8 +194,6 @@ namespace ns {
 		GLuint depthAttachement_;
 
 		void createFramebuffer();
-
-
 		SkyMapRenderer skyBox;
 
 		friend class Debug;

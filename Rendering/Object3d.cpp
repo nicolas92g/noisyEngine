@@ -107,7 +107,7 @@ void ns::DirectionalObject3d::setDirection(const glm::vec3& direction)
 	direction_ = glm::normalize(direction);
 }
 
-glm::vec3 ns::DirectionalObject3d::direction()
+glm::vec3 ns::DirectionalObject3d::direction() const
 {
 	if (!parent_.has_value()) return direction_;
 
