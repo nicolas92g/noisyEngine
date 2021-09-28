@@ -4,7 +4,6 @@
 
 physx::PxDefaultErrorCallback ns::SceneSimulation::defaultErrorCallback;
 physx::PxDefaultAllocator ns::SceneSimulation::defaultAllocatorCallback;
-
 physx::PxFoundation* ns::SceneSimulation::foundation;
 
 ns::SceneSimulation::SceneSimulation()
@@ -30,5 +29,15 @@ ns::SceneSimulation::SceneSimulation()
 	sceneDesc.filterShader = &PxDefaultSimulationFilterShader;
 
 	scene_ = physics_->createScene(sceneDesc);
+}
 
+ns::SceneSimulation::~SceneSimulation()
+{
+	scene_->release();
+	physics_->release();
+}
+
+void ns::SceneSimulation::destroyFoundation()
+{
+	foundation->release();
 }

@@ -6,9 +6,9 @@
 ns::DrawableObject3d::DrawableObject3d(Drawable& model, const glm::vec3& position, const glm::vec3& scale, const glm::vec3& axis, float angle)
 	:
 	GeometricObject3d(position, scale, axis, angle ),
-	model_(model)
+	model_(&model)
 {
-	const Model* ptr = dynamic_cast<const Model*>(&model_);
+	const Model* ptr = dynamic_cast<const Model*>(model_);
 	if (!ptr) return;
 
 	lights_.resize(ptr->getLights().size());
@@ -34,10 +34,15 @@ ns::DrawableObject3d::DrawableObject3d(Drawable& model, const glm::vec3& positio
 void ns::DrawableObject3d::draw(const Shader& shader) const
 {
 	shader.set("model", modelMatrix_);
-	model_.draw(shader);
+	model_->draw(shader);
 }
 
 const std::vector<std::shared_ptr<ns::LightBase_>>& ns::DrawableObject3d::getLights() const
 {
 	return lights_;
+}
+
+void ns::DrawableObject3d::setMesh(Drawable& mesh)
+{
+	model_ = &mesh;
 }

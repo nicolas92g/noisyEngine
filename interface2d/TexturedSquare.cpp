@@ -18,11 +18,11 @@ void ns::TexturedSquare::draw(const ns::Shader& shader) const
 void ns::TexturedSquare::createSquare()
 {
 	float vert[20] = {
-		// positions			// texture Coords
-		-1.0f,  1.0f, 0.0f,		0.0f, 1.0f,
-		-1.0f, -1.0f, 0.0f,		0.0f, 0.0f,
-		 1.0f,  1.0f, 0.0f,		1.0f, 1.0f,
-		 1.0f, -1.0f, 0.0f,		1.0f, 0.0f
+		// positions			// texture Coords 
+		-.5f,  .5f, 0.f,		0.0f, 1.0f,
+		-.5f, -.5f, 0.f,		0.0f, 0.0f,
+		 .5f,  .5f, 0.f,		1.0f, 1.0f,
+		 .5f, -.5f, 0.f,		1.0f, 0.0f
 	};
 
 	glGenVertexArrays(1, &squareVAO);

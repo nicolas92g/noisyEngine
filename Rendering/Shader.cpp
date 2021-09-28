@@ -8,6 +8,7 @@
 
 #include <Utils/DebugLayer.h>
 
+GLuint ns::Shader::currentlyBindedShader = 0;
 
 #ifdef RUNTIME_SHADER_RECOMPILATION
 std::list<ns::Shader*> ns::Shader::shaders;
@@ -352,6 +353,14 @@ int ns::Shader::getUniformLocation(const std::string& name) const
 }
 
 void ns::Shader::use() const
+{
+	if (Shader::currentlyBindedShader != id) {
+		glUseProgram(id);
+		Shader::currentlyBindedShader = id;
+	}
+}
+
+void ns::Shader::forceUse() const
 {
 	glUseProgram(id);
 }

@@ -370,7 +370,7 @@ void ns::Debug::scenesMenu()
 							Separator();
 							inputDrawableObject3d(*obj);
 
-							Model* model = dynamic_cast<Model*>(&obj->model_);
+							Model* model = dynamic_cast<Model*>(obj->model_);
 							if (model) {
 								Separator();
 								

@@ -317,14 +317,14 @@ float calcShadow(vec4 lightFP, vec3 normal, vec3 lightDir){
     }
 
     //smooth limits
-    const float transitionSize = .05;
-
-    if(projCoords.y < transitionSize){
-        shadow *= projCoords.y / transitionSize;
-    }
-    if(projCoords.x < transitionSize){
-        shadow *= projCoords.x / transitionSize;
-    }
+    //const float transitionSize = .05;
+    //
+    //if(projCoords.y < transitionSize){
+    //    shadow *= projCoords.y / transitionSize;
+    //}
+    //if(projCoords.x < transitionSize){
+    //    shadow *= projCoords.x / transitionSize;
+    //}
     return shadow;
 }
 

@@ -6,7 +6,7 @@ namespace ns {
 	class Renderer2d
 	{
 	public:
-		Renderer2d(const std::vector<const DrawableObject2d*>& entities);
+		Renderer2d(Window& win, const std::vector<const DrawableObject2d*>& entities = {});
 		~Renderer2d();
 
 		void render() const;
@@ -17,6 +17,7 @@ namespace ns {
 		void setEntities(const std::vector<const DrawableObject2d*>& entities);
 
 	private:
+		ns::Window& win_;
 		std::vector<const ns::DrawableObject2d*> entities_;
 		Shader shader_;
 	};

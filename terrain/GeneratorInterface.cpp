@@ -20,7 +20,7 @@ ns::GeneratorInterface::GeneratorInterface()
 	window_(1920, 1080, "noisy terrain generator v0 alpha", 2),
 	cam_(glm::vec3(9, 6, -8), -.6, 1.5, 1.8),
 	scene_(DirectionalLight::nullLight()),
-	renderer_(window_, cam_, scene_, Renderer3dCreateInfo()),
+	renderer_(window_, cam_, scene_, Renderer3dConfigInfo()),
 	chunkSize_(ns::defaultSize),
 	chunkRes_(32)
 {

@@ -70,10 +70,14 @@ namespace ns {
 		 */
 		~Shader();
 		/**
-		 * bind this shader
+		 * bind this shader but check if this is not already used before
 		 * need this line before a draw call to render with this shader
 		 */
 		void use() const;
+		/**
+		 * @brief bind this shader without checking if it is already used
+		 */
+		void forceUse() const;
 		template<typename T>
 		/**  
 		 * change the value of a uniform var in the shader
@@ -90,7 +94,9 @@ namespace ns {
 		static void update(const Window& window);
 		
 	protected:
-		uint32_t id;
+		GLuint id;
+
+		static GLuint currentlyBindedShader;
 		mutable std::unordered_map<std::string, int> uniformsNames_;
 
 #		ifdef RUNTIME_SHADER_RECOMPILATION

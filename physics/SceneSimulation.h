@@ -7,8 +7,10 @@ namespace ns {
 	{
 	public:
 		SceneSimulation();
-	protected:
+		~SceneSimulation();
 
+		static void destroyFoundation();
+	protected:
 		static physx::PxFoundation* foundation;
 		physx::PxPhysics* physics_;
 		physx::PxScene* scene_;
@@ -18,6 +20,7 @@ namespace ns {
 		static physx::PxDefaultErrorCallback defaultErrorCallback;
 		static physx::PxDefaultAllocator defaultAllocatorCallback;
 		static constexpr physx::PxU32 physXVersion = PX_PHYSICS_VERSION;
+		
 	};
 }
 

@@ -1,11 +1,13 @@
 #include "Renderer2d.h"
 
 #include "TexturedSquare.h"
+#include <glm/gtx/transform.hpp>
 
-ns::Renderer2d::Renderer2d(const std::vector<const DrawableObject2d*>& entities)
+ns::Renderer2d::Renderer2d(Window& win, const std::vector<const DrawableObject2d*>& entities)
 	:
+	win_(win),
 	entities_(entities),
-	shader_(NS_PATH"assets/shaders/main/interface2d.vert", NS_PATH"assets/shaders/main/interface2d.frag")
+	shader_(NS_PATH"assets/shaders/main/interface2d.vert", NS_PATH"assets/shaders/main/interface2d.frag", nullptr, {}, true)
 {
 	TexturedSquare::createSquare();
 }
@@ -17,6 +19,7 @@ ns::Renderer2d::~Renderer2d()
 
 void ns::Renderer2d::render() const
 {
+	shader_.set("projection", glm::ortho<float>(0.f, win_.width(), 0.f, win_.height()));
 	for (const auto& entity : entities_)
 	{
 		entity->draw(shader_);

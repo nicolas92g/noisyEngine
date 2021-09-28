@@ -6,7 +6,7 @@
  * \date   September 2021
  *********************************************************************/
 
-//renderer
+//3D renderering
 #include <Rendering/Window.h>
 #include <Rendering/Shader.h>
 #include <Rendering/Mesh.h>
@@ -16,6 +16,10 @@
 #include <Rendering/Scene.h>
 #include <Rendering/Light.h>
 #include <Rendering/BillboardRenderer.h>
+
+//2D
+#include <interface2d/Renderer2d.h>
+#include <interface2d/texturedSquare.h>
 
 //utils
 #include <Utils/Timer.h>

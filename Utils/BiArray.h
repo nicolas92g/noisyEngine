@@ -239,7 +239,7 @@ namespace ns {
 	template<typename T>
 	inline void BiArray<T>::emplace(uint32_t x, uint32_t y, T&& newValue)
 	{
-		ptr_[x + y * dim_.x] = std::move(newValue);
+		ptr_[x + y * dim_.x] = newValue;
 	}
 	template<typename T>
 	inline T& BiArray<T>::value(uint32_t x, uint32_t y)

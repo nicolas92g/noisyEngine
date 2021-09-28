@@ -9,7 +9,7 @@ ns::Sphere::SphereContainer::SphereContainer(uint32_t resolution, float sphereRa
 	resolution_(resolution),
 	resolutionPlusOne_(resolution_ + 1),
 	radius_(sphereRadius),
-	sphereThread_(genSphereVertices, this),
+	sphereThread_(&genSphereVertices, this),
 	terrain_({ 
 		BiArray<SphereContainer::Chunk>(glm::ivec2(resolution_)),
 		BiArray<SphereContainer::Chunk>(glm::ivec2(resolution_)),
@@ -37,50 +37,29 @@ double ns::Sphere::SphereContainer::sphereProgressionPercentage() const
 std::shared_ptr<ns::Mesh> ns::Sphere::SphereContainer::getDebugSphere() const
 {
 	MeshConfigInfo info_;
-	info_.indexedVertices = true;
+	info_.indexedVertices = false;
 	info_.primitive = GL_LINES;
-	std::vector<ns::Vertex> verts((size_t)resolutionPlusOne_ * resolutionPlusOne_ * NUMBER_OF_FACES_IN_A_CUBE);
-	std::vector<uint32_t> inds;
-	inds.reserve((size_t)NUMBER_OF_FACES_IN_A_CUBE * resolution_ * resolution_);
+	std::vector<ns::Vertex> verts;
+	verts.reserve((size_t)NUMBER_OF_FACES_IN_A_CUBE * resolution_ * resolution_ * 6);
 
-	const uint32_t k = resolutionPlusOne_;
 	for (uint32_t face = 0; face < NUMBER_OF_FACES_IN_A_CUBE; ++face)
 	{
 		for (uint32_t j = 0; j < resolution_; ++j)
 		{
 			for (uint32_t i = 0; i < resolution_; ++i)
 			{
-				const uint32_t a = (face * k + j) * k + i;
-				const uint32_t b = (face * k + j) * k + i + 1;
-				const uint32_t c = (face * k + j + 1) * k + i;
-				const uint32_t d = (face * k + j + 1) * k + i + 1;
-
-				inds.emplace_back(b);
-				inds.emplace_back(a);
-				inds.emplace_back(c);
-				inds.emplace_back(d);
-				inds.emplace_back(d);
-				inds.emplace_back(b);
-
+				auto& value = terrain_[face].value(i, j);
+				verts.emplace_back(vertex(value.coords.d).position);
+				verts.emplace_back(vertex(value.coords.c).position);
+				verts.emplace_back(vertex(value.coords.c).position);
+				verts.emplace_back(vertex(value.coords.a).position);
+				verts.emplace_back(vertex(value.coords.a).position);
+				verts.emplace_back(vertex(value.coords.b).position);
 			}
 		}
 	}
 
-	size_t cursor = 0;
-	for (size_t face = 0; face < 6; face++)
-	{
-		for (size_t i = 0; i < resolutionPlusOne_; i++)
-		{
-			for (size_t j = 0; j < resolutionPlusOne_; j++)
-			{
-				verts[cursor].position = vertices_[face].value(i, j).position;
-				verts[cursor].normal = vertices_[face].value(i, j).position;
-				cursor++;
-			}
-		}
-	}
-
-	return std::make_shared<ns::Mesh>(verts, inds, Material::getDefault(), info_);
+	return std::make_shared<ns::Mesh>(verts, std::vector<unsigned>(), Material::getDefault(), info_);
 }
 
 std::shared_ptr<ns::Sphere::SphereChunk> ns::Sphere::SphereContainer::chunk(glm::vec2 angles)
@@ -88,53 +67,54 @@ std::shared_ptr<ns::Sphere::SphereChunk> ns::Sphere::SphereContainer::chunk(glm:
 	return std::shared_ptr<ns::Sphere::SphereChunk>();
 }
 
-
-glm::vec2 ns::Sphere::SphereContainer::getAngle(const glm::vec3& localSpherePosition)
+bool ns::Sphere::SphereContainer::checkCoordIsInChunk(glm::vec3 pos, const Chunk& chunk)
 {
-	return glm::vec2();
+	pos = glm::normalize(pos) * radius_;
+	return  pos.x >= chunk.Xs[0] and pos.x <= chunk.Xs[3] 
+		and pos.y >= chunk.Ys[0] and pos.y <= chunk.Ys[3] 
+		and pos.z >= chunk.Zs[0] and pos.z <= chunk.Zs[3];
 }
 
-bool ns::Sphere::SphereContainer::checkCoordIsInChunk(glm::vec2 coords, const ChunkCoords& chunk)
-{
-	const glm::vec2 min(std::min(vertex(chunk.a).angles.x, vertex(chunk.d).angles.x), std::min(vertex(chunk.a).angles.y, vertex(chunk.d).angles.y));
-	const glm::vec2 max(std::max(vertex(chunk.a).angles.x, vertex(chunk.d).angles.x), std::max(vertex(chunk.a).angles.y, vertex(chunk.d).angles.y));
-	return coords.x >= min.x and coords.x <= max.x and coords.y >= min.y and coords.y <= max.y;
-}
-
-const ns::Sphere::SphereContainer::Vertex& ns::Sphere::SphereContainer::vertex(const Index& index)
-{
-	return vertices_[index.face].value(index.i, index.j);
-}
-
+//this create the sphere terrain grid vertices
 void ns::Sphere::SphereContainer::genSphereVertices(SphereContainer* object)
 {
+	using namespace glm;
 	Timer t("generate spherified cube");
-	static constexpr glm::vec3 origins[NUMBER_OF_FACES_IN_A_CUBE] =
+	static const vec3 origins[NUMBER_OF_FACES_IN_A_CUBE]
 	{
-		glm::vec3(-1.0, -1.0, -1.0),
-		glm::vec3(1.0, -1.0, -1.0),
-		glm::vec3(1.0, -1.0, 1.0),
-		glm::vec3(-1.0, -1.0, 1.0),
-		glm::vec3(-1.0, 1.0, -1.0),
-		glm::vec3(-1.0, -1.0, 1.0)
+		vec3(-1.0, -1.0, -1.0),
+		vec3(1.0, -1.0, -1.0),
+		vec3(1.0, -1.0, 1.0),
+		vec3(-1.0, -1.0, 1.0),
+		vec3(-1.0, 1.0, -1.0),
+		vec3(-1.0, -1.0, 1.0)
 	};
-	static constexpr glm::vec3 rights[NUMBER_OF_FACES_IN_A_CUBE] =
+	static const vec3 rights[NUMBER_OF_FACES_IN_A_CUBE]
 	{
-		glm::vec3(2.0, 0.0, 0.0),
-		glm::vec3(0.0, 0.0, 2.0),
-		glm::vec3(-2.0, 0.0, 0.0),
-		glm::vec3(0.0, 0.0, -2.0),
-		glm::vec3(2.0, 0.0, 0.0),
-		glm::vec3(2.0, 0.0, 0.0)
+		vec3(2.0, 0.0, 0.0),
+		vec3(0.0, 0.0, 2.0),
+		vec3(-2.0, 0.0, 0.0),
+		vec3(0.0, 0.0, -2.0),
+		vec3(2.0, 0.0, 0.0),
+		vec3(2.0, 0.0, 0.0)
 	};
-	static constexpr glm::vec3 ups[NUMBER_OF_FACES_IN_A_CUBE] =
+	static const vec3 ups[NUMBER_OF_FACES_IN_A_CUBE]
 	{
-		glm::vec3(0.0, 2.0, 0.0),
-		glm::vec3(0.0, 2.0, 0.0),
-		glm::vec3(0.0, 2.0, 0.0),
-		glm::vec3(0.0, 2.0, 0.0),
-		glm::vec3(0.0, 0.0, 2.0),
-		glm::vec3(0.0, 0.0, -2.0)
+		vec3(0.0, 2.0, 0.0),
+		vec3(0.0, 2.0, 0.0),
+		vec3(0.0, 2.0, 0.0),
+		vec3(0.0, 2.0, 0.0),
+		vec3(0.0, 0.0, 2.0),
+		vec3(0.0, 0.0, -2.0)
+	};
+	static const vec3 normals[NUMBER_OF_FACES_IN_A_CUBE]
+	{
+		vec3(0.0, 0.0, -1.0),
+		vec3(1.0, 0.0 ,0.0),
+		vec3(0.0, 0.0, 1.0),
+		vec3(-1.0, 0.0, 0.0),
+		vec3(0.0, 1.0 ,0.0),
+		vec3(0.0, -1.0, 0.0)
 	};
 
 	const float step = 1.f / (float)object->resolution_;
@@ -142,7 +122,7 @@ void ns::Sphere::SphereContainer::genSphereVertices(SphereContainer* object)
 
 	for (uint8_t face = 0; face < NUMBER_OF_FACES_IN_A_CUBE; face++)
 	{
-		std::cout << "face " << (int)face << std::endl;
+		//std::cout << "face " << (int)face << std::endl;
 		for (uint32_t j = 0; j < object->resolutionPlusOne_; j++)
 		{
 			const glm::vec3 jup = (float)j * ups[face];
@@ -157,14 +137,11 @@ void ns::Sphere::SphereContainer::genSphereVertices(SphereContainer* object)
 					p.z * std::sqrt(1.0f - 0.5f * (p2.x + p2.y) + p2.x * p2.y / 3.0f)
 				);
 
-				object->vertices_[face].emplace(i, j, Vertex(n * object->radius_, 
-					glm::vec2(glm::degrees(glm::acos(glm::dot(n, glm::vec3(1, 0, 0)))),
-					glm::degrees(glm::acos(glm::dot(n, glm::vec3(0, 0, 1)))))));
-
-				std::cout << to_string(object->vertices_[face].value(i, j).angles) << "\n";
+				object->vertices_[face].emplace(i, j, Vertex(n * object->radius_));
 
 				object->sphereProgression_++;
 			}
+			std::cout << object->sphereProgressionPercentage() << " %" << newl;
 		}
 	}
 
@@ -175,11 +152,6 @@ void ns::Sphere::SphereContainer::genSphereVertices(SphereContainer* object)
 		{
 			for (uint32_t i = 0; i < object->resolution_; ++i)
 			{
-				//const uint32_t a = (face * k + j) * k + i;
-				//const uint32_t b = (face * k + j) * k + i + 1;
-				//const uint32_t c = (face * k + j + 1) * k + i;
-				//const uint32_t d = (face * k + j + 1) * k + i + 1;
-
 				auto& value = object->terrain_[face].value(i, j);
 				value.coords.a.face = face;
 				value.coords.a.i = i;
@@ -196,6 +168,16 @@ void ns::Sphere::SphereContainer::genSphereVertices(SphereContainer* object)
 				value.coords.d.face = face;
 				value.coords.d.i = i + 1;
 				value.coords.d.j = j + 1;
+
+				const auto& chunk = value.coords;
+
+				value.Xs = { object->vertex(chunk.a).position.x , object->vertex(chunk.b).position.x , object->vertex(chunk.c).position.x , object->vertex(chunk.d).position.x };
+				value.Ys = { object->vertex(chunk.a).position.y , object->vertex(chunk.b).position.y , object->vertex(chunk.c).position.y , object->vertex(chunk.d).position.y };
+				value.Zs = { object->vertex(chunk.a).position.z , object->vertex(chunk.b).position.z , object->vertex(chunk.c).position.z , object->vertex(chunk.d).position.z };
+
+				std::sort(value.Xs.begin(), value.Xs.end());
+				std::sort(value.Ys.begin(), value.Ys.end());
+				std::sort(value.Zs.begin(), value.Zs.end());
 			}
 		}
 	}
