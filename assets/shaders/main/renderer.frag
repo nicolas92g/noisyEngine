@@ -100,6 +100,7 @@ float calcShadow(vec4 lightFP, vec3 normal, vec3 lightDir);
 
 void main(){
     PixelMaterial pbr = getMaterial();
+    pbr.alpha = 1;
 
 	//fragment to eye of the camera vector
     vec3 V = normalize(camPos - fragPos);

@@ -78,7 +78,7 @@ void ns::Shader::update(const Window& window)
 
 	
 	if (window.key(RECOMPILATION_KEY) and !recompileKeyState) {
-		Debug::get() << "reloading shaders";
+		dout << "reloading shaders";
 		for (Shader* shader : shaders) {
 			if (shader->filepaths.size() > 1)
 			{
@@ -88,9 +88,9 @@ void ns::Shader::update(const Window& window)
 			{
 				shader->loadComputeShaderFrom(shader->filepaths[0], shader->defines);
 			}
-			Debug::get() << ".";
+			dout << ".";
 		}
-		Debug::get() << std::endl;
+		dout << std::endl;
 	}
 
 	recompileKeyState = window.key(RECOMPILATION_KEY);
@@ -102,18 +102,18 @@ void ns::Shader::loadShaderFrom(const char* vertexPath, const char* fragmentPath
 {
 	std::string vertex;
 	if (!filepathToString(vertex, vertexPath)) {
-		Debug::get() << "error : can't find vertex shader's file at path :\n" << vertexPath << "\n";
+		dout << "error : can't find vertex shader's file at path :\n" << vertexPath << "\n";
 	}
 
 
 	std::string fragment;
 	if (!filepathToString(fragment, fragmentPath)) {
-		Debug::get() << "error : can't find fragment shader's file at path :\n" << fragmentPath << "\n";
+		dout << "error : can't find fragment shader's file at path :\n" << fragmentPath << "\n";
 	}
 
 	std::string geometry;
 	if (geometryPath != nullptr and strlen(geometryPath) > 1 and !filepathToString(geometry, geometryPath)) {
-		Debug::get() << "error : can't find geometry shader's file at path :\n" << geometryPath << "\n";
+		dout << "error : can't find geometry shader's file at path :\n" << geometryPath << "\n";
 	}
 
 	setDefines(vertex, defines, ns::Shader::Stage::Vertex);
@@ -131,7 +131,7 @@ void ns::Shader::loadComputeShaderFrom(const char* computePath, const std::vecto
 {
 	std::string computeText;
 	if (!filepathToString(computeText, computePath)) {
-		Debug::get() << "error : can't find compute shader's file at path :\n" << computePath << "\n";
+		dout << "error : can't find compute shader's file at path :\n" << computePath << "\n";
 	}
 
 	setDefines(computeText, defines, ns::Shader::Stage::Compute);
@@ -150,7 +150,7 @@ void ns::Shader::loadComputeShaderFrom(const char* computePath, const std::vecto
 	glGetShaderiv(computeShader, GL_COMPILE_STATUS, vertexCompilationSuccess);
 	if (!*vertexCompilationSuccess) {
 		glGetShaderInfoLog(computeShader, 512, NULL, errorLog);
-		Debug::get() << "ERROR in the compute shader \n" << errorLog << '\n';
+		dout << "ERROR in the compute shader \n file : " << computePath << newl << errorLog << '\n';
 	}
 
 	id = glCreateProgram();
@@ -161,7 +161,7 @@ void ns::Shader::loadComputeShaderFrom(const char* computePath, const std::vecto
 	glGetProgramiv(id, GL_LINK_STATUS, &linkSuccess);
 	if (!linkSuccess) {
 		glGetProgramInfoLog(id, 512, NULL, errorLog);
-		Debug::get() << "ERROR while linking compute shader \n" << errorLog << '\n';
+		dout << "ERROR while linking compute shader \n file : " << computePath << newl << errorLog << '\n';
 	}
 }
 
@@ -214,7 +214,7 @@ void ns::Shader::treatUniformArrays(std::vector<std::string>& names, const std::
 
 		size_t bracketEnd = name.find(']');
 		if (bracketBeg == name.npos) {
-			Debug::get() << "Shader uniform error : in uniform :" << name << " ! can't find ']' \n";
+			dout << "Shader uniform error : in uniform :" << name << " ! can't find ']' \n";
 		}
 		std::string size = name.substr(bracketBeg + 1, bracketEnd - bracketBeg - 1);
 
@@ -226,7 +226,7 @@ void ns::Shader::treatUniformArrays(std::vector<std::string>& names, const std::
 		catch (...) {
 			size_t pos = source.find(size);
 			if (pos == source.npos) {
-				Debug::get() << "Shader error in a uniform array : " << name << " can't find it's numeric size !\n";
+				dout << "Shader error in a uniform array : " << name << " can't find it's numeric size !\n";
 				return;
 			}
 			std::string line = source.substr(pos, source.find('\n', pos) - pos - 1);
@@ -242,7 +242,7 @@ void ns::Shader::treatUniformArrays(std::vector<std::string>& names, const std::
 			}
 		}
 		if (value == 0) {
-			Debug::get() << "Shader error : failed to find uniform array size : " << name << std::endl;
+			dout << "Shader error : failed to find uniform array size : " << name << std::endl;
 		}
 
 		std::string arrayName = name.substr();
@@ -320,7 +320,7 @@ void ns::Shader::readUniformsNamesFromSource(const std::string& source)
 				treatUniformArrays(realNames, source);
 
 				for (const auto& name : realNames)
-					Debug::get() << name << std::endl;
+					dout << name << std::endl;
 			}
 			else {
 				//get the uniform name
@@ -344,7 +344,7 @@ int ns::Shader::getUniformLocation(const std::string& name) const
 	if (uniformsNames_.find(name) != uniformsNames_.end())
 		return uniformsNames_[name];
 
-	Debug::get() << "Shader::getUniformLocation error ! uniform name :" << name << " is not registered !\n";
+	dout << "Shader::getUniformLocation error ! uniform name :" << name << " is not registered !\n";
 	return glGetUniformLocation(id, name.c_str());
 
 #	else
@@ -378,7 +378,7 @@ void ns::Shader::compileShader(const char* vertex, const char* fragment, const c
 	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, vertexCompilationSuccess);
 	if (!*vertexCompilationSuccess) {
 		glGetShaderInfoLog(vertexShader, 512, NULL, errorLog);
-		Debug::get() << "ERROR in the vertex shader \n" << errorLog << '\n';
+		dout << "ERROR in the vertex shader \n" << errorLog << '\n';
 	}
 
 	uint32_t geometryShader;
@@ -395,7 +395,7 @@ void ns::Shader::compileShader(const char* vertex, const char* fragment, const c
 		glGetShaderiv(geometryShader, GL_COMPILE_STATUS, geometryCompilationSuccess);
 		if (!*geometryCompilationSuccess) {
 			glGetShaderInfoLog(geometryShader, 512, NULL, errorLog);
-			Debug::get() << "ERROR in the geometry shader \n" << errorLog << '\n';
+			dout << "ERROR in the geometry shader \n" << errorLog << '\n';
 		}
 	}
 
@@ -408,7 +408,7 @@ void ns::Shader::compileShader(const char* vertex, const char* fragment, const c
 	glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, fragmentCompilationSuccess);
 	if (!*fragmentCompilationSuccess) {
 		glGetShaderInfoLog(fragmentShader, 512, NULL, errorLog);
-		Debug::get() << "ERROR in the fragment shader \n" << errorLog << '\n';
+		dout << "ERROR in the fragment shader \n" << errorLog << '\n';
 	}
 	//create a programm object
 	id = glCreateProgram();
@@ -422,7 +422,7 @@ void ns::Shader::compileShader(const char* vertex, const char* fragment, const c
 	glGetProgramiv(id, GL_LINK_STATUS, &linkSuccess);
 	if (!linkSuccess) {
 		glGetProgramInfoLog(id, 512, NULL, errorLog);
-		Debug::get() << "ERROR while linking shaders \n" << errorLog << '\n';
+		dout << "ERROR while linking shaders \n" << errorLog << '\n';
 	}
 	use();
 	glDeleteShader(vertexShader);

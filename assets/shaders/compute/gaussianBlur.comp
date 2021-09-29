@@ -12,7 +12,7 @@ uniform sampler2D inputTexture;//texture to blur
 uniform sampler2D dirtMask;
 
 #define FACTOR .9  
-const float weight[5] = const float[] (0.227027 * FACTOR, 0.1945946 * FACTOR, 0.1216216 * FACTOR, 0.054054 * FACTOR, 0.016216 * FACTOR);
+const float weight[5] = float[] (0.227027 * FACTOR, 0.1945946 * FACTOR, 0.1216216 * FACTOR, 0.054054 * FACTOR, 0.016216 * FACTOR);
 const float stepFac = .9;
 
 const float dirtMaskFactor = .00f;

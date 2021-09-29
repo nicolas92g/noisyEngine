@@ -6,7 +6,7 @@
 #include <memory>
 #include <map>
 
-#include <ofbx.h>
+//#include <ofbx.h>
 
 #include "Light.h"
 
@@ -88,9 +88,9 @@ namespace ns {
 
 		
 	protected:	//loading with OpenFBX
-		bool importWithOpenFBX();
+		//bool importWithOpenFBX();
 
-		void createMeshFromFBX(const ofbx::Mesh& mesh, ofbx::IScene& scene);
+		//void createMeshFromFBX(const ofbx::Mesh& mesh, ofbx::IScene& scene);
 
 	protected:
 		GLuint pickIndexType(size_t numberOfPositions) const;

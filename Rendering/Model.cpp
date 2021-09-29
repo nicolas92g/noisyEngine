@@ -66,119 +66,119 @@ bool ns::Model::importWithAssimp()
 	return true;
 }
 
-bool ns::Model::importWithOpenFBX()
-{
-	using namespace ofbx;
-	
-	//open fbx file as a binary file
-	std::ifstream file(filepath_, std::ios::binary | std::ios::in);
-	
-	if (!file.is_open()) {
-		Debug::get() << "failed to open FBX file : " << filepath_ << std::endl;
-		return false;
-	}
-
-	//determine size of the file
-	file.seekg(0, file.end);
-	size_t file_size = file.tellg();
-	
-	//set cursor at the begining
-	file.seekg(0, file.beg);
-
-	//alloc file content buffer
-	u8* content = new u8[file_size];
-	
-	//read file
-	for (size_t i = 0; i < file_size; i++)
-	{
-		content[i] = file.get();
-	}
-
-	//load the fbx scene
-	IScene& scene = *load(content, file_size, (u64)LoadFlags::TRIANGULATE);
-
-	//free the file content buffer
-	delete[] content;
-
-	//check that loading was successful
-	if (!&scene) {
-		Debug::get() << "failed to read file : "<< filepath_ << " with OpenFBX :\n" << getError() << std::endl;
-		return false;
-	}
-
-	//goes through meshes
-	for (int i = 0; i < scene.getMeshCount(); i++)
-	{
-		createMeshFromFBX(*scene.getMesh(i), scene);
-	}
-
-	
-	for (size_t i = 0; i < scene.getAnimationStackCount(); i++)
-	{
-		const AnimationStack& animStack = *scene.getAnimationStack(i);
-	}
-
-	scene.destroy();
-	return true;
-}
-
-void ns::Model::createMeshFromFBX(const ofbx::Mesh& mesh, ofbx::IScene& scene)
-{
-	using namespace ofbx;
-	std::vector<ns::Vertex> vertices;
-	std::vector<unsigned int> indices;
-	std::vector<ns::TextureView> textures;
-
-	ns::MeshConfigInfo info;
-	info.supportNormalMapping = mesh.getGeometry()->getTangents() != nullptr;
-	info.hasBitangents = false;
-	info.name = mesh.name;
-	info.primitive = GL_TRIANGLES;
-	info.indexType = pickIndexType(mesh.getGeometry()->getVertexCount());
-
-	const Geometry& geo = *mesh.getGeometry();
-	//Debug::get() << "mesh " << mesh.name << " has " << geo.getIndexCount() << " indices and " << geo.getVertexCount() << " vertices\n";
-
-	vertices.resize(mesh.getGeometry()->getVertexCount());
-	for (size_t i = 0; i < vertices.size(); i++)
-	{
-		Vertex v;
-		//fill position
-		v.position = {geo.getVertices()[i].x , geo.getVertices()[i].y, geo.getVertices()[i].z };
-
-		//fill normals
-		if (geo.getNormals() == nullptr) { Debug::get() << "mesh " << info.name << " doesn't have normals !\n";}
-		else v.normal = { geo.getNormals()[i].x, geo.getNormals()[i].y, geo.getNormals()[i].z };
-
-		//fill uvs
-		if (geo.getUVs() != nullptr)
-			v.uv = {(float)geo.getUVs()[i].x, 1.0f - (float)geo.getUVs()[i].y };
-
-		if (info.supportNormalMapping) {
-			//fill tangents
-			v.tangent = { geo.getTangents()[i].x , geo.getTangents()[i].y , geo.getTangents()[i].z };
-		}
-		else {
-			v.genTangent();
-		}
-		vertices[i] = v;
-	}
-
-	//fill indices
-	const int* faceIndices = geo.getFaceIndices();
-	for (int i = 0; i < geo.getIndexCount(); ++i)
-	{
-		int idx = (faceIndices[i] < 0) ? -faceIndices[i] : (faceIndices[i] + 1);
-		indices.push_back(static_cast<unsigned int>(idx - 1));
-	}
-
-	//fill material
-	if (mesh.getMaterial(0) != nullptr) {
-		materials_.push_back(std::make_unique<Material>(mesh.getMaterial(0), dir_));
-	}
-
-	meshes_.push_back(std::make_unique<ns::Mesh>(vertices, indices, *materials_.back(), info));
-}
+//bool ns::Model::importWithOpenFBX()
+//{
+//	using namespace ofbx;
+//	
+//	//open fbx file as a binary file
+//	std::ifstream file(filepath_, std::ios::binary | std::ios::in);
+//	
+//	if (!file.is_open()) {
+//		Debug::get() << "failed to open FBX file : " << filepath_ << std::endl;
+//		return false;
+//	}
+//
+//	//determine size of the file
+//	file.seekg(0, file.end);
+//	size_t file_size = file.tellg();
+//	
+//	//set cursor at the begining
+//	file.seekg(0, file.beg);
+//
+//	//alloc file content buffer
+//	u8* content = new u8[file_size];
+//	
+//	//read file
+//	for (size_t i = 0; i < file_size; i++)
+//	{
+//		content[i] = file.get();
+//	}
+//
+//	//load the fbx scene
+//	IScene& scene = *load(content, file_size, (u64)LoadFlags::TRIANGULATE);
+//
+//	//free the file content buffer
+//	delete[] content;
+//
+//	//check that loading was successful
+//	if (!&scene) {
+//		Debug::get() << "failed to read file : "<< filepath_ << " with OpenFBX :\n" << getError() << std::endl;
+//		return false;
+//	}
+//
+//	//goes through meshes
+//	for (int i = 0; i < scene.getMeshCount(); i++)
+//	{
+//		createMeshFromFBX(*scene.getMesh(i), scene);
+//	}
+//
+//	
+//	for (size_t i = 0; i < scene.getAnimationStackCount(); i++)
+//	{
+//		const AnimationStack& animStack = *scene.getAnimationStack(i);
+//	}
+//
+//	scene.destroy();
+//	return true;
+//}
+//
+//void ns::Model::createMeshFromFBX(const ofbx::Mesh& mesh, ofbx::IScene& scene)
+//{
+//	using namespace ofbx;
+//	std::vector<ns::Vertex> vertices;
+//	std::vector<unsigned int> indices;
+//	std::vector<ns::TextureView> textures;
+//
+//	ns::MeshConfigInfo info;
+//	info.supportNormalMapping = mesh.getGeometry()->getTangents() != nullptr;
+//	info.hasBitangents = false;
+//	info.name = mesh.name;
+//	info.primitive = GL_TRIANGLES;
+//	info.indexType = pickIndexType(mesh.getGeometry()->getVertexCount());
+//
+//	const Geometry& geo = *mesh.getGeometry();
+//	//Debug::get() << "mesh " << mesh.name << " has " << geo.getIndexCount() << " indices and " << geo.getVertexCount() << " vertices\n";
+//
+//	vertices.resize(mesh.getGeometry()->getVertexCount());
+//	for (size_t i = 0; i < vertices.size(); i++)
+//	{
+//		Vertex v;
+//		//fill position
+//		v.position = {geo.getVertices()[i].x , geo.getVertices()[i].y, geo.getVertices()[i].z };
+//
+//		//fill normals
+//		if (geo.getNormals() == nullptr) { Debug::get() << "mesh " << info.name << " doesn't have normals !\n";}
+//		else v.normal = { geo.getNormals()[i].x, geo.getNormals()[i].y, geo.getNormals()[i].z };
+//
+//		//fill uvs
+//		if (geo.getUVs() != nullptr)
+//			v.uv = {(float)geo.getUVs()[i].x, 1.0f - (float)geo.getUVs()[i].y };
+//
+//		if (info.supportNormalMapping) {
+//			//fill tangents
+//			v.tangent = { geo.getTangents()[i].x , geo.getTangents()[i].y , geo.getTangents()[i].z };
+//		}
+//		else {
+//			v.genTangent();
+//		}
+//		vertices[i] = v;
+//	}
+//
+//	//fill indices
+//	const int* faceIndices = geo.getFaceIndices();
+//	for (int i = 0; i < geo.getIndexCount(); ++i)
+//	{
+//		int idx = (faceIndices[i] < 0) ? -faceIndices[i] : (faceIndices[i] + 1);
+//		indices.push_back(static_cast<unsigned int>(idx - 1));
+//	}
+//
+//	//fill material
+//	if (mesh.getMaterial(0) != nullptr) {
+//		materials_.push_back(std::make_unique<Material>(mesh.getMaterial(0), dir_));
+//	}
+//
+//	meshes_.push_back(std::make_unique<ns::Mesh>(vertices, indices, *materials_.back(), info));
+//}
 
 void ns::Model::readNodesFromAssimp(aiNode* node, const aiScene* scene)
 {

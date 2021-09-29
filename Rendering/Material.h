@@ -23,7 +23,7 @@
 #include <assimp/material.h>
 
 //OpenFBX
-#include <ofbx.h>
+//#include <ofbx.h>
 
 namespace ns {
 	/**
@@ -42,7 +42,7 @@ namespace ns {
 	public:
 		Material(const glm::vec3& albedo = glm::vec3(.5f), float roughness = .1f, float metallic = .01f, const glm::vec3& emission = glm::vec3(0.f), const std::string& exportName = "none");
 		Material(aiMaterial* mtl, const std::string& texturesDirectory, const std::string& exportName = "none");
-		Material(const ofbx::Material* mtl, const std::string& texturesDirectory, const std::string& exportName = "none");
+		//Material(const ofbx::Material* mtl, const std::string& texturesDirectory, const std::string& exportName = "none");
 		/**
 		 * @brief This constructor is able to read some YAML files.
 		 * It can read a constant value or a texture path.
@@ -194,7 +194,7 @@ namespace ns {
 		 * @brief debug purpose
 		 * \param mtl
 		 */
-		static void displayTextures(const ofbx::Material* mtl);
+		//static void displayTextures(const ofbx::Material* mtl);
 
 		//material textures usage:
 		/**

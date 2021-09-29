@@ -82,56 +82,56 @@ ns::Material::Material(aiMaterial* mtl, const std::string& texturesDirectory, co
 	}
 }
 
-ns::Material::Material(const ofbx::Material* mtl, const std::string& texturesDirectory, const std::string& exportName)
-	: 
-	Material()
-{
-	albedo_ = to_vec3(mtl->getDiffuseColor());
-	metallic_ = mtl->getReflectionFactor();
-	roughness_ = mtl->getShininessExponent();
-	name_ = mtl->name;
-	filepath_ = exportName;
-
-	const ofbx::Texture* tex;
-	char buffer[200];
-	
-	tex = mtl->getTexture(ofbx::Texture::TextureType::DIFFUSE);
-	if (tex) {
-		tex->getFileName().toString(buffer);
-		albedoMap_ = addTexture("", buffer);
-	}
-
-	tex = mtl->getTexture(ofbx::Texture::TextureType::SPECULAR);
-	if (tex) {
-		tex->getFileName().toString(buffer);
-		metallicMap_ = addTexture("", buffer);
-	}
-
-	tex = mtl->getTexture(ofbx::Texture::TextureType::REFLECTION);
-	if (tex) {
-		tex->getFileName().toString(buffer);
-		metallicMap_ = addTexture("", buffer);
-	}
-
-	tex = mtl->getTexture(ofbx::Texture::TextureType::SHININESS);
-	if (tex) {
-		tex->getFileName().toString(buffer);
-		roughnessMap_ = addTexture("", buffer);
-	}
-
-	tex = mtl->getTexture(ofbx::Texture::TextureType::NORMAL);
-	if (tex) {
-		tex->getFileName().toString(buffer);
-		normalMap_ = addTexture("", buffer);
-	}
-
-	tex = mtl->getTexture(ofbx::Texture::TextureType::EMISSIVE);
-	if (tex) {
-		tex->getFileName().toString(buffer);
-		ambientOcclusionMap_ = addTexture("", buffer);
-	}
-
-}
+//ns::Material::Material(const ofbx::Material* mtl, const std::string& texturesDirectory, const std::string& exportName)
+//	: 
+//	Material()
+//{
+//	albedo_ = to_vec3(mtl->getDiffuseColor());
+//	metallic_ = mtl->getReflectionFactor();
+//	roughness_ = mtl->getShininessExponent();
+//	name_ = mtl->name;
+//	filepath_ = exportName;
+//
+//	const ofbx::Texture* tex;
+//	char buffer[200];
+//	
+//	tex = mtl->getTexture(ofbx::Texture::TextureType::DIFFUSE);
+//	if (tex) {
+//		tex->getFileName().toString(buffer);
+//		albedoMap_ = addTexture("", buffer);
+//	}
+//
+//	tex = mtl->getTexture(ofbx::Texture::TextureType::SPECULAR);
+//	if (tex) {
+//		tex->getFileName().toString(buffer);
+//		metallicMap_ = addTexture("", buffer);
+//	}
+//
+//	tex = mtl->getTexture(ofbx::Texture::TextureType::REFLECTION);
+//	if (tex) {
+//		tex->getFileName().toString(buffer);
+//		metallicMap_ = addTexture("", buffer);
+//	}
+//
+//	tex = mtl->getTexture(ofbx::Texture::TextureType::SHININESS);
+//	if (tex) {
+//		tex->getFileName().toString(buffer);
+//		roughnessMap_ = addTexture("", buffer);
+//	}
+//
+//	tex = mtl->getTexture(ofbx::Texture::TextureType::NORMAL);
+//	if (tex) {
+//		tex->getFileName().toString(buffer);
+//		normalMap_ = addTexture("", buffer);
+//	}
+//
+//	tex = mtl->getTexture(ofbx::Texture::TextureType::EMISSIVE);
+//	if (tex) {
+//		tex->getFileName().toString(buffer);
+//		ambientOcclusionMap_ = addTexture("", buffer);
+//	}
+//
+//}
 
 ns::Material::Material(const std::string& filepath) :
 	Material()
@@ -530,50 +530,50 @@ void ns::Material::removeTexture(const TextureView& view)
 	}
 }
 
-void ns::Material::displayTextures(const ofbx::Material* mtl)
-{
-	const ofbx::Texture* tex;
-	char buffer[200];
-
-	tex = mtl->getTexture(ofbx::Texture::TextureType::DIFFUSE);
-	if (tex) {
-		tex->getFileName().toString(buffer);
-		Debug::get() << "texture  diffuse : " << buffer << std::endl;
-	}
-
-	tex = mtl->getTexture(ofbx::Texture::TextureType::SPECULAR);
-	if (tex) {
-		tex->getFileName().toString(buffer);
-		Debug::get() << "texture specular : " << buffer << std::endl;
-	}
-
-	tex = mtl->getTexture(ofbx::Texture::TextureType::SHININESS);
-	if (tex) {
-		tex->getFileName().toString(buffer);
-		Debug::get() << "texture  SHININESS : " << buffer << std::endl;
-	}
-
-	tex = mtl->getTexture(ofbx::Texture::TextureType::NORMAL);
-	if (tex) {
-		tex->getFileName().toString(buffer);
-		Debug::get() << "texture NORMAL  : " << buffer << std::endl;
-	}
-
-	tex = mtl->getTexture(ofbx::Texture::TextureType::EMISSIVE);
-	if (tex) {
-		tex->getFileName().toString(buffer);
-		Debug::get() << "texture  EMISSIVE : " << buffer << std::endl;
-	}
-
-	tex = mtl->getTexture(ofbx::Texture::TextureType::AMBIENT);
-	if (tex) {
-		tex->getFileName().toString(buffer);
-		Debug::get() << "texture AMBIENT  : " << buffer << std::endl;
-	}
-
-	tex = mtl->getTexture(ofbx::Texture::TextureType::REFLECTION);
-	if (tex) {
-		tex->getFileName().toString(buffer);
-		Debug::get() << "texture  REFLECTION : " << buffer << std::endl;
-	}
-}
+//void ns::Material::displayTextures(const ofbx::Material* mtl)
+//{
+//	const ofbx::Texture* tex;
+//	char buffer[200];
+//
+//	tex = mtl->getTexture(ofbx::Texture::TextureType::DIFFUSE);
+//	if (tex) {
+//		tex->getFileName().toString(buffer);
+//		Debug::get() << "texture  diffuse : " << buffer << std::endl;
+//	}
+//
+//	tex = mtl->getTexture(ofbx::Texture::TextureType::SPECULAR);
+//	if (tex) {
+//		tex->getFileName().toString(buffer);
+//		Debug::get() << "texture specular : " << buffer << std::endl;
+//	}
+//
+//	tex = mtl->getTexture(ofbx::Texture::TextureType::SHININESS);
+//	if (tex) {
+//		tex->getFileName().toString(buffer);
+//		Debug::get() << "texture  SHININESS : " << buffer << std::endl;
+//	}
+//
+//	tex = mtl->getTexture(ofbx::Texture::TextureType::NORMAL);
+//	if (tex) {
+//		tex->getFileName().toString(buffer);
+//		Debug::get() << "texture NORMAL  : " << buffer << std::endl;
+//	}
+//
+//	tex = mtl->getTexture(ofbx::Texture::TextureType::EMISSIVE);
+//	if (tex) {
+//		tex->getFileName().toString(buffer);
+//		Debug::get() << "texture  EMISSIVE : " << buffer << std::endl;
+//	}
+//
+//	tex = mtl->getTexture(ofbx::Texture::TextureType::AMBIENT);
+//	if (tex) {
+//		tex->getFileName().toString(buffer);
+//		Debug::get() << "texture AMBIENT  : " << buffer << std::endl;
+//	}
+//
+//	tex = mtl->getTexture(ofbx::Texture::TextureType::REFLECTION);
+//	if (tex) {
+//		tex->getFileName().toString(buffer);
+//		Debug::get() << "texture  REFLECTION : " << buffer << std::endl;
+//	}
+//}

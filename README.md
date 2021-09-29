@@ -15,8 +15,9 @@
 - <a href="https://github.com/jbeder/yaml-cpp">yaml-cpp</a>
 - <a href="https://github.com/nothings/stb/blob/master/stb_image.h">stb_image</a>
 - <a href="https://github.com/assimp/assimp">assimp</a>
-- an edited version of <a href="https://github.com/nem0/OpenFBX">OpenFBX</a>
+<!--- an edited version of <a href="https://github.com/nem0/OpenFBX">OpenFBX</a>-->
 - <a href="http://glm.g-truc.net/0.9.9/index.html">glm</a>
+- <a href="https://github.com/ocornut/imgui">imgui</a>
 
 
 <H3>to do list</H3>

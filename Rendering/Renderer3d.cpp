@@ -307,7 +307,7 @@ void ns::Renderer3d::importFromYAML()
 	try {
 		auto clear = conf["renderer"]["clearColor"].as<glm::vec4>();
 		glClearColor(clear.r, clear.g, clear.b, clear.a);
-
+	
 		info_.bloomIteration = conf["renderer"]["bloomIteration"].as<int>();
 		info_.FXAA = conf["renderer"]["enableFXAA"].as<bool>();
 		info_.showNormals = conf["renderer"]["showNormals"].as<bool>();

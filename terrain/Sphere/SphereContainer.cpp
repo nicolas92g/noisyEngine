@@ -59,7 +59,7 @@ std::shared_ptr<ns::Mesh> ns::Sphere::SphereContainer::getDebugSphere() const
 		}
 	}
 
-	return std::make_shared<ns::Mesh>(verts, std::vector<unsigned>(), Material::getDefault(), info_);
+	return std::make_shared<ns::Mesh>(verts, std::vector<unsigned>(), Material(glm::vec3(1), .1, .1, glm::vec3(.1)), info_);
 }
 
 std::shared_ptr<ns::Sphere::SphereChunk> ns::Sphere::SphereContainer::chunk(glm::vec2 angles)
@@ -137,7 +137,7 @@ void ns::Sphere::SphereContainer::genSphereVertices(SphereContainer* object)
 					p.z * std::sqrt(1.0f - 0.5f * (p2.x + p2.y) + p2.x * p2.y / 3.0f)
 				);
 
-				object->vertices_[face].emplace(i, j, Vertex(n * object->radius_));
+				object->vertices_[face].emplace(i, j, { n * object->radius_ });
 
 				object->sphereProgression_++;
 			}

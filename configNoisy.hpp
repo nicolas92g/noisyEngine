@@ -1,5 +1,6 @@
 #pragma once
-#define NS_PATH "C:/Users/nicol/source/repos/noisyEngine/noisyEngine/Source/"
+//#define NS_PATH "C:/Users/nicol/source/repos/noisyEngine/noisyEngine/Source/"
+#define NS_PATH "C:/Users/nicol/Documents/noisyEngine/"
 #define CONFIG_FILE "config.yaml"
 #define NS_MATERIAL_FILE_EXTENSION ".nsmat"
 
@@ -16,9 +17,10 @@
 //when false allow to save almost 200 bytes on each geometric object3d but this remove access to the translation, scaling and rotation matrix
 #define NS_GEOMETRIC_OBJECT3D_STORE_ALL_MATRICES false
 
+#define OPENGL_LOG_PERFORMANCE_ISSUES false
 
 //macros to make sintax faster and more readable
-#define dout ns::Debug::get()
+#define dout std::cout //ns::Debug::get()
 #define newl '\n'
 
 #include <glm/glm.hpp>

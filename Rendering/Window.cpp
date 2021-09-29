@@ -362,7 +362,7 @@ void ns::Window::importFromYAML()
         setSize(buf.x, buf.y);
         buf = conf["window"]["position"].as<glm::ivec2>();
         setPosition(buf.x, buf.y);
-
+    
         setFullscreen(conf["window"]["fullscreen"].as<bool>());
         if (conf["window"]["maximised"].as<bool>()) maximise();
     }
@@ -404,6 +404,10 @@ void APIENTRY ns::Window::glDebugOutput(GLenum source,
     // ignore non-significant error/warning codes
     if (id == 131169 || id == 131185 || id == 131218 || id == 131204) return;
 
+#   if not OPENGL_LOG_PERFORMANCE_ISSUES
+    if (type == GL_DEBUG_TYPE_PERFORMANCE) return;
+#   endif
+
     std::cerr << "---------------" << '\n';
     std::cerr << "Debug message (" << id << "): " << message << '\n';
     dout << "OpenGL Error : " << id << '\n';
@@ -424,7 +428,7 @@ void APIENTRY ns::Window::glDebugOutput(GLenum source,
     case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: std::cerr << "Type: Deprecated Behaviour"; break;
     case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:  std::cerr << "Type: Undefined Behaviour"; break;
     case GL_DEBUG_TYPE_PORTABILITY:         std::cerr << "Type: Portability"; break;
-    case GL_DEBUG_TYPE_PERFORMANCE:         std::cerr << "Type: Performance"; break;
+    case GL_DEBUG_TYPE_PERFORMANCE:         std::cerr << "Type: Performance"; return;
     case GL_DEBUG_TYPE_MARKER:              std::cerr << "Type: Marker"; break;
     case GL_DEBUG_TYPE_PUSH_GROUP:          std::cerr << "Type: Push Group"; break;
     case GL_DEBUG_TYPE_POP_GROUP:           std::cerr << "Type: Pop Group"; break;

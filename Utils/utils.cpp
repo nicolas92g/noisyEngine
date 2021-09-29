@@ -6,7 +6,7 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
-YAML::Node ns::conf = YAML::LoadFile(CONFIG_FILE);
+YAML::Node ns::conf = ns::loadAndCheckFile(CONFIG_FILE);
 
 std::string ns::to_string(const glm::vec2& vec)
 {
@@ -53,20 +53,20 @@ glm::vec3 ns::to_vec3(const aiColor3D& vec)
 	return { vec.r, vec.g, vec.b };
 }
 
-glm::vec3 ns::to_vec3(const ofbx::Color& vec)
-{
-	return {vec.r, vec.g, vec.b};
-}
-
-glm::vec3 ns::to_vec3(const ofbx::Vec3& vec)
-{
-	return { vec.x, vec.y, vec.z };
-}
-
-glm::vec4 ns::to_vec4(const ofbx::Vec4& vec)
-{
-	return { vec.x, vec.y, vec.z, vec.w };
-}
+//glm::vec3 ns::to_vec3(const ofbx::Color& vec)
+//{
+//	return {vec.r, vec.g, vec.b};
+//}
+//
+//glm::vec3 ns::to_vec3(const ofbx::Vec3& vec)
+//{
+//	return { vec.x, vec.y, vec.z };
+//}
+//
+//glm::vec4 ns::to_vec4(const ofbx::Vec4& vec)
+//{
+//	return { vec.x, vec.y, vec.z, vec.w };
+//}
 
 void ns::to_mat4(glm::mat4& output, const aiMatrix4x4* mat)
 {
@@ -183,4 +183,19 @@ bool ns::isFileExist(const std::string& filepath)
 {
     std::ifstream file(filepath);
     return file.is_open();
+}
+
+YAML::Node ns::loadAndCheckFile(const std::string& filename)
+{
+    if (isFileExist(filename)) {
+        try {
+            return YAML::LoadFile(filename);
+        }
+        catch (...) {
+            dout << "failed to read the configuration file !\n";
+            return YAML::Node();
+        }
+    }
+    dout << "failed to load the configuration file at : " << CONFIG_FILE << newl;
+    return YAML::Node();
 }
