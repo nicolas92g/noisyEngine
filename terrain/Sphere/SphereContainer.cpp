@@ -70,9 +70,66 @@ std::shared_ptr<ns::Sphere::SphereChunk> ns::Sphere::SphereContainer::chunk(glm:
 bool ns::Sphere::SphereContainer::checkCoordIsInChunk(glm::vec3 pos, const Chunk& chunk)
 {
 	pos = glm::normalize(pos) * radius_;
-	return  pos.x >= chunk.Xs[0] and pos.x <= chunk.Xs[3] 
-		and pos.y >= chunk.Ys[0] and pos.y <= chunk.Ys[3] 
-		and pos.z >= chunk.Zs[0] and pos.z <= chunk.Zs[3];
+	return  pos.x >= chunk.limit.minX and pos.x < chunk.limit.maxX
+		and pos.y >= chunk.limit.minY and pos.y < chunk.limit.maxY
+		and pos.z >= chunk.limit.minZ and pos.z < chunk.limit.maxZ;
+}
+
+void ns::Sphere::SphereContainer::fillChunkLimits(ChunkLimits& limit, const ChunkCoords& chunk)
+{
+	//put each position component in an array
+	std::array<float, 4> Xs{ vertex(chunk.a).position.x , vertex(chunk.b).position.x , vertex(chunk.c).position.x , vertex(chunk.d).position.x };
+	std::array<float, 4> Ys{ vertex(chunk.a).position.y , vertex(chunk.b).position.y , vertex(chunk.c).position.y , vertex(chunk.d).position.y };
+	std::array<float, 4> Zs{ vertex(chunk.a).position.z , vertex(chunk.b).position.z , vertex(chunk.c).position.z , vertex(chunk.d).position.z };
+
+	//sort those arrays
+	std::sort(Xs.begin(), Xs.end());
+	std::sort(Ys.begin(), Ys.end());
+	std::sort(Zs.begin(), Zs.end());
+
+	//store the maximun and minimun components
+	limit.maxX = Xs[3];
+	limit.minX = Xs[0];
+	limit.maxY = Ys[3];
+	limit.minY = Ys[0];
+	limit.maxZ = Zs[3];
+	limit.minZ = Zs[0];
+}
+
+void ns::Sphere::SphereContainer::fillChunkSubRegions(ChunksRegion& reg, uint8_t face)
+{
+	const Chunk& ChunkA = chunk(Index(face, reg.firstChunkIndex.x, reg.firstChunkIndex.y));
+	const Chunk& ChunkB = chunk(Index(face, reg.firstChunkIndex.x, reg.lastChunkIndex.y));
+	const Chunk& ChunkC = chunk(Index(face, reg.lastChunkIndex.x, reg.firstChunkIndex.y));
+	const Chunk& ChunkD = chunk(Index(face, reg.lastChunkIndex.x, reg.lastChunkIndex.y));
+
+	reg.limit.minX = std::min({ ChunkA.limit.minX, ChunkB.limit.minX, ChunkC.limit.minX, ChunkD.limit.minX });
+	reg.limit.maxX = std::max({ ChunkA.limit.maxX, ChunkB.limit.maxX, ChunkC.limit.maxX, ChunkD.limit.maxX });
+	reg.limit.minY = std::min({ ChunkA.limit.minY, ChunkB.limit.minY, ChunkC.limit.minY, ChunkD.limit.minY });
+	reg.limit.maxY = std::max({ ChunkA.limit.maxY, ChunkB.limit.maxY, ChunkC.limit.maxY, ChunkD.limit.maxY });
+	reg.limit.minZ = std::min({ ChunkA.limit.minZ, ChunkB.limit.minZ, ChunkC.limit.minZ, ChunkD.limit.minZ });
+	reg.limit.maxZ = std::max({ ChunkA.limit.maxZ, ChunkB.limit.maxZ, ChunkC.limit.maxZ, ChunkD.limit.maxZ });
+
+	using namespace glm;
+
+	u16vec2 size(reg.lastChunkIndex.x - reg.firstChunkIndex.x, reg.lastChunkIndex.y - reg.firstChunkIndex.y);
+
+	if (size.x > 3 and size.y > 3) {
+
+		reg.innerRegions.emplace(2, 2);
+		const u16vec2 middle = reg.firstChunkIndex + size / (u16)2;
+		const u16vec2 middleL = middle - (u16)1;
+
+		reg.innerRegions.value().emplace(0, 0, ChunksRegion(reg.firstChunkIndex, middleL));
+		reg.innerRegions.value().emplace(1, 0, ChunksRegion(u16vec2(middle.x, reg.firstChunkIndex.y), u16vec2(reg.lastChunkIndex.x, middleL.y)));
+		reg.innerRegions.value().emplace(0, 1, ChunksRegion(u16vec2(reg.firstChunkIndex.x, middle.y), u16vec2(middleL.x, reg.lastChunkIndex.y)));
+		reg.innerRegions.value().emplace(1, 1, ChunksRegion(middle, reg.lastChunkIndex));
+
+		fillChunkSubRegions(reg.innerRegions.value()[0], face);
+		fillChunkSubRegions(reg.innerRegions.value()[1], face);
+		fillChunkSubRegions(reg.innerRegions.value()[2], face);
+		fillChunkSubRegions(reg.innerRegions.value()[3], face);
+	}
 }
 
 //this create the sphere terrain grid vertices
@@ -117,6 +174,7 @@ void ns::Sphere::SphereContainer::genSphereVertices(SphereContainer* object)
 		vec3(0.0, -1.0, 0.0)
 	};
 
+
 	const float step = 1.f / (float)object->resolution_;
 	object->sphereProgression_ = 0;
 
@@ -137,12 +195,16 @@ void ns::Sphere::SphereContainer::genSphereVertices(SphereContainer* object)
 					p.z * std::sqrt(1.0f - 0.5f * (p2.x + p2.y) + p2.x * p2.y / 3.0f)
 				);
 
-				object->vertices_[face].emplace(i, j, { n * object->radius_ });
+				if(j == 0)
+					std::cout << to_string(n) << ",\n";
 
+				object->vertices_[face].emplace(i, j, { n * object->radius_ });
 				object->sphereProgression_++;
 			}
-			std::cout << object->sphereProgressionPercentage() << " %" << newl;
+			std::cout << newl;
+			//std::cout << object->sphereProgressionPercentage() << " %" << newl;
 		}
+		std::cout << "\n----\n\n";
 	}
 
 	const uint32_t k = object->resolutionPlusOne_;
@@ -169,15 +231,7 @@ void ns::Sphere::SphereContainer::genSphereVertices(SphereContainer* object)
 				value.coords.d.i = i + 1;
 				value.coords.d.j = j + 1;
 
-				const auto& chunk = value.coords;
-
-				value.Xs = { object->vertex(chunk.a).position.x , object->vertex(chunk.b).position.x , object->vertex(chunk.c).position.x , object->vertex(chunk.d).position.x };
-				value.Ys = { object->vertex(chunk.a).position.y , object->vertex(chunk.b).position.y , object->vertex(chunk.c).position.y , object->vertex(chunk.d).position.y };
-				value.Zs = { object->vertex(chunk.a).position.z , object->vertex(chunk.b).position.z , object->vertex(chunk.c).position.z , object->vertex(chunk.d).position.z };
-
-				std::sort(value.Xs.begin(), value.Xs.end());
-				std::sort(value.Ys.begin(), value.Ys.end());
-				std::sort(value.Zs.begin(), value.Zs.end());
+				object->fillChunkLimits(value.limit, value.coords);
 			}
 		}
 	}

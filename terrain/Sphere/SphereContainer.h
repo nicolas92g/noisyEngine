@@ -35,21 +35,18 @@ namespace ns::Sphere {
 				glm::vec3(0.0, -1.0, 0.0)
 			};
 
-			uint8_t face_ = -1;
+			std::vector<uint8_t> faces;
 
-			if (position.z <= position.x and position.z <= position.y) face_ = 0;
-			else if (position.x >= position.y and position.x >= position.z) face_ = 1;
-			else if (position.z >= position.x and position.z >= position.y) face_ = 2;
-			else if (position.x <= position.y and position.x <= position.z) face_ = 3;
-			else if (position.y >= position.x and position.y >= position.z) face_ = 4;
-			else if (position.y <= position.x and position.y <= position.z) face_ = 5;
-			else {
-				vert.emplace_back(ns::Vertex(glm::vec3(10, 0, 0)));
-				vert.emplace_back(ns::Vertex(glm::vec3(0, 0, 10)));
-				vert.emplace_back(ns::Vertex(glm::vec3(-10, 0, 0)));
-			}
-			for (size_t face = 0; face < 6; face++)
+			if (position.z <= position.x and position.z <= position.y and position.z < 0) faces.push_back(0);
+			if (position.x >= position.y and position.x >= position.z and position.x > 0) faces.push_back(1);
+			if (position.z >= position.x and position.z >= position.y and position.z > 0) faces.push_back(2);
+			if (position.x <= position.y and position.x <= position.z and position.x < 0) faces.push_back(3);
+			if (position.y >= position.x and position.y >= position.z and position.y > 0) faces.push_back(4);
+			if (position.y <= position.x and position.y <= position.z and position.y < 0) faces.push_back(5);
+
+			for (size_t f = 0; f < faces.size(); f++)
 			{
+				auto face = faces[f];
 				for (size_t i = 0; i < terrain_[face].x(); i++)
 				{
 					for (size_t j = 0; j < terrain_[face].y(); j++)
@@ -63,12 +60,19 @@ namespace ns::Sphere {
 							vert.emplace_back(ns::Vertex(vertex(coo.c).position));
 							vert.emplace_back(ns::Vertex(vertex(coo.b).position));
 							vert.emplace_back(ns::Vertex(vertex(coo.d).position));
-							//std::cout << "face = " << face << "founded face = " << (int)face_ << newl;
 
+							//std::cout << "real face = " << (int)face;
 						}
 					}
 				}
 			}
+
+			
+			//for (size_t k = 0; k < faces.size(); k++)
+			//{
+			//	std::cout << " founded faces = " << (int)faces[k];
+			//}
+			//std::cout << ns::to_string(position) << newl;
 
 			if (vert.empty()) {
 				vert.emplace_back(ns::Vertex(glm::vec3(10, 0, 0)));
@@ -85,16 +89,20 @@ namespace ns::Sphere {
 		}
 		
 	protected:
+		//define a vertex on the spheric grid
 		struct Vertex {
 			glm::vec3 position;
 		};
 
+		//define the value that allow to access memory
 		struct Index {
-			uint8_t face;
-			uint16_t i;
-			uint16_t j;
+			Index(uint8_t face = 0, uint16_t i = 0, uint16_t j = 0) : face(face), i(i), j(j){}
+			uint8_t face;	//index between 0 and 5, it is the face of the cube
+			uint16_t i;		//x on the square face
+			uint16_t j;		//y on the square face
 		};
 
+		//define some chunk coordinates (a square with four vertices but vertices are not copied, they are indexed)
 		struct ChunkCoords {
 			Index a;
 			Index b;
@@ -102,14 +110,31 @@ namespace ns::Sphere {
 			Index d;
 		};
 
+		//store the min and max of each position components
+		struct ChunkLimits {
+			float minX;
+			float maxX;
+			float minY;
+			float maxY;
+			float minZ;
+			float maxZ;
+		};
+
+		//describe a zone of chunks to allow fast search of a chunk
+		struct ChunksRegion {
+			ChunksRegion(glm::u16vec2 first = { 0,0 }, glm::u16vec2 last = { 0,0 }) : firstChunkIndex(first), lastChunkIndex(last) {}
+			ChunkLimits limit{};
+			glm::u16vec2 firstChunkIndex;
+			glm::u16vec2 lastChunkIndex;
+			std::optional<ns::BiArray<ChunksRegion>> innerRegions;//array of four regions or nothing
+		};
+
+		//describe a chunk
 		struct Chunk {
-			std::shared_ptr<SphereChunk> mesh;
-			ChunkCoords coords;
-			
-			//sorted arrays of the chunks coordonates
-			std::array<float, 4> Xs;
-			std::array<float, 4> Ys;
-			std::array<float, 4> Zs;
+			std::shared_ptr<SphereChunk> mesh;//mesh of the chunk
+			ChunkCoords coords{};//position of the chunk
+			ChunkLimits limit{};//limits of the chunk
+			ChunksRegion subRegions;//sub regions of the chunk that allow to quickly search for a chunk
 		};
 
 	protected:
@@ -120,12 +145,15 @@ namespace ns::Sphere {
 
 		std::array<ns::BiArray<Chunk>, NUMBER_OF_FACES_IN_A_CUBE> terrain_;
 		std::array<ns::BiArray<Vertex>, NUMBER_OF_FACES_IN_A_CUBE> vertices_;
+		
 
 		std::thread sphereThread_;
 		std::atomic_uint32_t sphereProgression_;
 
 	protected:
 		bool checkCoordIsInChunk(glm::vec3 pos, const Chunk& chunk);
+		void fillChunkLimits(ChunkLimits& limit, const ChunkCoords& chunkPos);
+		void fillChunkSubRegions(ChunksRegion& chunk, uint8_t face);
 
 		const Vertex& vertex(const Index& index) const { return vertices_[index.face].value(index.i, index.j); }
 		Vertex& vertex(const Index& index) { return vertices_[index.face].value(index.i, index.j); }
