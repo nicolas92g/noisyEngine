@@ -44,35 +44,50 @@ namespace ns::Sphere {
 			if (position.y >= position.x and position.y >= position.z and position.y > 0) faces.push_back(4);
 			if (position.y <= position.x and position.y <= position.z and position.y < 0) faces.push_back(5);
 
-			for (size_t f = 0; f < faces.size(); f++)
+			for (uint8_t f = 0; f < faces.size(); f++)
 			{
-				auto face = faces[f];
-				for (size_t i = 0; i < terrain_[face].x(); i++)
-				{
-					for (size_t j = 0; j < terrain_[face].y(); j++)
-					{
-						if (checkCoordIsInChunk(position, terrain_[face].value(i, j))) {
-							const auto& coo = terrain_[face].value(i, j).coords;
+				const auto face = faces[f];
 
+				//for (size_t i = 0; i < terrain_[face].x(); i++)
+				//{
+				//	for (size_t j = 0; j < terrain_[face].y(); j++)
+				//	{
+				//		if (checkCoordIsInLimit(position, terrain_[face].value(i, j).limit)) {
+				//			const auto& coo = terrain_[face].value(i, j).coords;
+				//
+				//			vert.emplace_back(ns::Vertex(vertex(coo.a).position));
+				//			vert.emplace_back(ns::Vertex(vertex(coo.b).position));
+				//			vert.emplace_back(ns::Vertex(vertex(coo.c).position));
+				//			vert.emplace_back(ns::Vertex(vertex(coo.c).position));
+				//			vert.emplace_back(ns::Vertex(vertex(coo.b).position));
+				//			vert.emplace_back(ns::Vertex(vertex(coo.d).position));
+				//
+				//		}
+				//	}
+				//}
+
+				const auto& region = findRegion(subRegions[face], position);
+				dout << "founded region : \n";
+				//logRegion(region);
+
+				for (uint32_t i = region.firstChunkIndex.x; i < (uint32_t)region.lastChunkIndex.x + 1; i++)
+				{
+					for (uint32_t j = region.firstChunkIndex.y; j < (uint32_t)region.lastChunkIndex.y + 1; j++)
+					{
+						if (checkCoordIsInLimit(position, terrain_[face].value(i, j).limit)) {
+							const auto& coo = terrain_[face].value(i, j).coords;
+				
 							vert.emplace_back(ns::Vertex(vertex(coo.a).position));
 							vert.emplace_back(ns::Vertex(vertex(coo.b).position));
 							vert.emplace_back(ns::Vertex(vertex(coo.c).position));
 							vert.emplace_back(ns::Vertex(vertex(coo.c).position));
 							vert.emplace_back(ns::Vertex(vertex(coo.b).position));
 							vert.emplace_back(ns::Vertex(vertex(coo.d).position));
-
-							//std::cout << "real face = " << (int)face;
+				
 						}
 					}
 				}
 			}
-
-			
-			//for (size_t k = 0; k < faces.size(); k++)
-			//{
-			//	std::cout << " founded faces = " << (int)faces[k];
-			//}
-			//std::cout << ns::to_string(position) << newl;
 
 			if (vert.empty()) {
 				vert.emplace_back(ns::Vertex(glm::vec3(10, 0, 0)));
@@ -126,7 +141,7 @@ namespace ns::Sphere {
 			ChunkLimits limit{};
 			glm::u16vec2 firstChunkIndex;
 			glm::u16vec2 lastChunkIndex;
-			std::optional<ns::BiArray<ChunksRegion>> innerRegions;//array of four regions or nothing
+			std::shared_ptr<ns::BiArray<ChunksRegion>> innerRegions;//array of four regions or nothing
 		};
 
 		//describe a chunk
@@ -134,7 +149,6 @@ namespace ns::Sphere {
 			std::shared_ptr<SphereChunk> mesh;//mesh of the chunk
 			ChunkCoords coords{};//position of the chunk
 			ChunkLimits limit{};//limits of the chunk
-			ChunksRegion subRegions;//sub regions of the chunk that allow to quickly search for a chunk
 		};
 
 	protected:
@@ -145,15 +159,18 @@ namespace ns::Sphere {
 
 		std::array<ns::BiArray<Chunk>, NUMBER_OF_FACES_IN_A_CUBE> terrain_;
 		std::array<ns::BiArray<Vertex>, NUMBER_OF_FACES_IN_A_CUBE> vertices_;
+		std::array<ChunksRegion, NUMBER_OF_FACES_IN_A_CUBE> subRegions;	//sub regions of the chunk that allow to quickly search for a chunk
 		
 
 		std::thread sphereThread_;
 		std::atomic_uint32_t sphereProgression_;
 
 	protected:
-		bool checkCoordIsInChunk(glm::vec3 pos, const Chunk& chunk);
+		bool checkCoordIsInLimit(const glm::vec3& pos, const ChunkLimits& limit);
 		void fillChunkLimits(ChunkLimits& limit, const ChunkCoords& chunkPos);
 		void fillChunkSubRegions(ChunksRegion& chunk, uint8_t face);
+
+		const ChunksRegion& findRegion(const ChunksRegion& region, const glm::vec3& pos);
 
 		const Vertex& vertex(const Index& index) const { return vertices_[index.face].value(index.i, index.j); }
 		Vertex& vertex(const Index& index) { return vertices_[index.face].value(index.i, index.j); }
@@ -161,5 +178,20 @@ namespace ns::Sphere {
 		Chunk& chunk(const Index& index) { return terrain_[index.face].value(index.i, index.j); }
 
 		static void genSphereVertices(SphereContainer* object);
+		static void logRegion(const ChunksRegion& region){ 
+			dout << "\nstart :\nfirst = " << to_string((glm::ivec2)region.firstChunkIndex) <<
+				"\nlast = " << to_string((glm::ivec2)region.lastChunkIndex) << "\n-------->\n\n";
+
+			if (region.innerRegions) {
+				dout << "first = " << to_string((glm::ivec2)(*region.innerRegions)[0].firstChunkIndex) <<
+					"\nlast = " << to_string((glm::ivec2)(*region.innerRegions)[0].lastChunkIndex) << "\n--\n";
+				dout << "first = " << to_string((glm::ivec2)(*region.innerRegions)[1].firstChunkIndex) <<
+					"\nlast = " << to_string((glm::ivec2)(*region.innerRegions)[1].lastChunkIndex) << "\n--\n";
+				dout << "first = " << to_string((glm::ivec2)(*region.innerRegions)[2].firstChunkIndex) <<
+					"\nlast = " << to_string((glm::ivec2)(*region.innerRegions)[2].lastChunkIndex) << "\n--\n";
+				dout << "first = " << to_string((glm::ivec2)(*region.innerRegions)[3].firstChunkIndex) <<
+					"\nlast = " << to_string((glm::ivec2)(*region.innerRegions)[3].lastChunkIndex) << "\n\n";
+			}
+		}
 	};
 }

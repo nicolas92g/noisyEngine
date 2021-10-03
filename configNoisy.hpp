@@ -1,6 +1,6 @@
 #pragma once
-//#define NS_PATH "C:/Users/nicol/source/repos/noisyEngine/noisyEngine/Source/"
-#define NS_PATH "C:/Users/nicol/Documents/noisyEngine/"
+#define NS_PATH "C:/Users/nicol/source/repos/noisyEngine/noisyEngine/Source/"
+//#define NS_PATH "C:/Users/nicol/Documents/noisyEngine/"
 #define CONFIG_FILE "config.yaml"
 #define NS_MATERIAL_FILE_EXTENSION ".nsmat"
 

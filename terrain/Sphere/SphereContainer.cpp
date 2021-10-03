@@ -6,7 +6,7 @@
 
 ns::Sphere::SphereContainer::SphereContainer(uint32_t resolution, float sphereRadius)
 	:
-	resolution_(resolution),
+	resolution_(resolution + resolution % 2),
 	resolutionPlusOne_(resolution_ + 1),
 	radius_(sphereRadius),
 	sphereThread_(&genSphereVertices, this),
@@ -58,7 +58,9 @@ std::shared_ptr<ns::Mesh> ns::Sphere::SphereContainer::getDebugSphere() const
 			}
 		}
 	}
+	for (uint32_t face = 0; face < NUMBER_OF_FACES_IN_A_CUBE; ++face) {
 
+	}
 	return std::make_shared<ns::Mesh>(verts, std::vector<unsigned>(), Material(glm::vec3(1), .1, .1, glm::vec3(.1)), info_);
 }
 
@@ -67,12 +69,12 @@ std::shared_ptr<ns::Sphere::SphereChunk> ns::Sphere::SphereContainer::chunk(glm:
 	return std::shared_ptr<ns::Sphere::SphereChunk>();
 }
 
-bool ns::Sphere::SphereContainer::checkCoordIsInChunk(glm::vec3 pos, const Chunk& chunk)
+bool ns::Sphere::SphereContainer::checkCoordIsInLimit(const glm::vec3& position, const ChunkLimits& limit)
 {
-	pos = glm::normalize(pos) * radius_;
-	return  pos.x >= chunk.limit.minX and pos.x < chunk.limit.maxX
-		and pos.y >= chunk.limit.minY and pos.y < chunk.limit.maxY
-		and pos.z >= chunk.limit.minZ and pos.z < chunk.limit.maxZ;
+	const glm::vec3 pos = glm::normalize(position) * radius_;
+	return  pos.x >= limit.minX and pos.x < limit.maxX
+		and pos.y >= limit.minY and pos.y < limit.maxY
+		and pos.z >= limit.minZ and pos.z < limit.maxZ;
 }
 
 void ns::Sphere::SphereContainer::fillChunkLimits(ChunkLimits& limit, const ChunkCoords& chunk)
@@ -115,20 +117,32 @@ void ns::Sphere::SphereContainer::fillChunkSubRegions(ChunksRegion& reg, uint8_t
 	u16vec2 size(reg.lastChunkIndex.x - reg.firstChunkIndex.x, reg.lastChunkIndex.y - reg.firstChunkIndex.y);
 
 	if (size.x > 3 and size.y > 3) {
+		//cut a region into four sub-regions
+		reg.innerRegions = std::make_unique<BiArray<ChunksRegion>>(2, 2);
+		const u16vec2 middleL = reg.firstChunkIndex + size / (u16)2;
+		const u16vec2 middle = middleL + (u16)1;
 
-		reg.innerRegions.emplace(2, 2);
-		const u16vec2 middle = reg.firstChunkIndex + size / (u16)2;
-		const u16vec2 middleL = middle - (u16)1;
+		reg.innerRegions->emplace(0, 0, ChunksRegion(reg.firstChunkIndex, middleL));
+		reg.innerRegions->emplace(1, 0, ChunksRegion(u16vec2(middle.x, reg.firstChunkIndex.y), u16vec2(reg.lastChunkIndex.x, middleL.y)));
+		reg.innerRegions->emplace(0, 1, ChunksRegion(u16vec2(reg.firstChunkIndex.x, middle.y), u16vec2(middleL.x, reg.lastChunkIndex.y)));
+		reg.innerRegions->emplace(1, 1, ChunksRegion(middle, reg.lastChunkIndex));
 
-		reg.innerRegions.value().emplace(0, 0, ChunksRegion(reg.firstChunkIndex, middleL));
-		reg.innerRegions.value().emplace(1, 0, ChunksRegion(u16vec2(middle.x, reg.firstChunkIndex.y), u16vec2(reg.lastChunkIndex.x, middleL.y)));
-		reg.innerRegions.value().emplace(0, 1, ChunksRegion(u16vec2(reg.firstChunkIndex.x, middle.y), u16vec2(middleL.x, reg.lastChunkIndex.y)));
-		reg.innerRegions.value().emplace(1, 1, ChunksRegion(middle, reg.lastChunkIndex));
+		fillChunkSubRegions((*reg.innerRegions)[0], face);
+		fillChunkSubRegions((*reg.innerRegions)[1], face);
+		fillChunkSubRegions((*reg.innerRegions)[2], face);
+		fillChunkSubRegions((*reg.innerRegions)[3], face);
+	}
+}
 
-		fillChunkSubRegions(reg.innerRegions.value()[0], face);
-		fillChunkSubRegions(reg.innerRegions.value()[1], face);
-		fillChunkSubRegions(reg.innerRegions.value()[2], face);
-		fillChunkSubRegions(reg.innerRegions.value()[3], face);
+const ns::Sphere::SphereContainer::ChunksRegion& ns::Sphere::SphereContainer::findRegion(const ChunksRegion& region, const glm::vec3& pos)
+{
+	if (!region.innerRegions)
+		return region;
+
+	for (uint8_t i = 0; i < 4; i++)
+	{
+		if (checkCoordIsInLimit(pos, (*region.innerRegions)[i].limit))
+			return findRegion((*region.innerRegions)[i], pos);
 	}
 }
 
@@ -136,7 +150,6 @@ void ns::Sphere::SphereContainer::fillChunkSubRegions(ChunksRegion& reg, uint8_t
 void ns::Sphere::SphereContainer::genSphereVertices(SphereContainer* object)
 {
 	using namespace glm;
-	Timer t("generate spherified cube");
 	static const vec3 origins[NUMBER_OF_FACES_IN_A_CUBE]
 	{
 		vec3(-1.0, -1.0, -1.0),
@@ -174,6 +187,7 @@ void ns::Sphere::SphereContainer::genSphereVertices(SphereContainer* object)
 		vec3(0.0, -1.0, 0.0)
 	};
 
+	Timer t("generate spherified cube");
 
 	const float step = 1.f / (float)object->resolution_;
 	object->sphereProgression_ = 0;
@@ -214,7 +228,7 @@ void ns::Sphere::SphereContainer::genSphereVertices(SphereContainer* object)
 		{
 			for (uint32_t i = 0; i < object->resolution_; ++i)
 			{
-				auto& value = object->terrain_[face].value(i, j);
+				auto& const value = object->terrain_[face].value(i, j);
 				value.coords.a.face = face;
 				value.coords.a.i = i;
 				value.coords.a.j = j;
@@ -235,4 +249,18 @@ void ns::Sphere::SphereContainer::genSphereVertices(SphereContainer* object)
 			}
 		}
 	}
+
+	for (uint8_t face = 0; face < NUMBER_OF_FACES_IN_A_CUBE; ++face) {
+		//init first sub-region
+		auto& region = object->subRegions[face];
+
+		region.firstChunkIndex = glm::u16vec2(0);
+		region.lastChunkIndex = glm::u16vec2(object->resolution_ - 1);
+
+		//recursively create all the sub-regions
+		object->fillChunkSubRegions(region, face);
+		logRegion(region);
+	}
+
+	
 }
