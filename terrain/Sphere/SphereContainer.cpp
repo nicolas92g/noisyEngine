@@ -4,9 +4,11 @@
 #include <future>
 #include <mutex>
 
+const ns::Sphere::SphereContainer::Index ns::Sphere::SphereContainer::Index::null(NULL_FACE_INDEX);
+
 ns::Sphere::SphereContainer::SphereContainer(uint32_t resolution, float sphereRadius)
 	:
-	resolution_(resolution + resolution % 2),
+	resolution_(resolution + resolution % 2),//resolution is forced to be an even number
 	resolutionPlusOne_(resolution_ + 1),
 	radius_(sphereRadius),
 	sphereThread_(&genSphereVertices, this),
@@ -64,17 +66,24 @@ std::shared_ptr<ns::Mesh> ns::Sphere::SphereContainer::getDebugSphere() const
 	return std::make_shared<ns::Mesh>(verts, std::vector<unsigned>(), Material(glm::vec3(1), .1, .1, glm::vec3(.1)), info_);
 }
 
-std::shared_ptr<ns::Sphere::SphereChunk> ns::Sphere::SphereContainer::chunk(glm::vec2 angles)
+std::shared_ptr<ns::Sphere::SphereChunk> ns::Sphere::SphereContainer::findChunk(const glm::vec3& normalizedVector)
 {
-	return std::shared_ptr<ns::Sphere::SphereChunk>();
+	const auto index = find(normalizedVector);
+	if (index.isNull()) return std::shared_ptr<SphereChunk>();
+	return chunk(index).mesh;
 }
 
-bool ns::Sphere::SphereContainer::checkCoordIsInLimit(const glm::vec3& position, const ChunkLimits& limit)
+float ns::Sphere::SphereContainer::radius() const
+{
+	return radius_;
+}
+
+bool ns::Sphere::SphereContainer::checkCoordIsInLimit(const glm::vec3& position, const ChunkLimits& limit) const
 {
 	const glm::vec3 pos = glm::normalize(position) * radius_;
-	return  pos.x >= limit.minX and pos.x < limit.maxX
-		and pos.y >= limit.minY and pos.y < limit.maxY
-		and pos.z >= limit.minZ and pos.z < limit.maxZ;
+	return  pos.x >= limit.minX and pos.x <= limit.maxX
+		and pos.y >= limit.minY and pos.y <= limit.maxY
+		and pos.z >= limit.minZ and pos.z <= limit.maxZ;
 }
 
 void ns::Sphere::SphereContainer::fillChunkLimits(ChunkLimits& limit, const ChunkCoords& chunk)
@@ -105,12 +114,12 @@ void ns::Sphere::SphereContainer::fillChunkSubRegions(ChunksRegion& reg, uint8_t
 	const Chunk& ChunkC = chunk(Index(face, reg.lastChunkIndex.x, reg.firstChunkIndex.y));
 	const Chunk& ChunkD = chunk(Index(face, reg.lastChunkIndex.x, reg.lastChunkIndex.y));
 
-	reg.limit.minX = std::min({ ChunkA.limit.minX, ChunkB.limit.minX, ChunkC.limit.minX, ChunkD.limit.minX });
-	reg.limit.maxX = std::max({ ChunkA.limit.maxX, ChunkB.limit.maxX, ChunkC.limit.maxX, ChunkD.limit.maxX });
-	reg.limit.minY = std::min({ ChunkA.limit.minY, ChunkB.limit.minY, ChunkC.limit.minY, ChunkD.limit.minY });
-	reg.limit.maxY = std::max({ ChunkA.limit.maxY, ChunkB.limit.maxY, ChunkC.limit.maxY, ChunkD.limit.maxY });
-	reg.limit.minZ = std::min({ ChunkA.limit.minZ, ChunkB.limit.minZ, ChunkC.limit.minZ, ChunkD.limit.minZ });
-	reg.limit.maxZ = std::max({ ChunkA.limit.maxZ, ChunkB.limit.maxZ, ChunkC.limit.maxZ, ChunkD.limit.maxZ });
+	reg.limit.minX = std::min({ ChunkA.limit.minX, ChunkB.limit.minX, ChunkC.limit.minX, ChunkD.limit.minX }) - .1;
+	reg.limit.maxX = std::max({ ChunkA.limit.maxX, ChunkB.limit.maxX, ChunkC.limit.maxX, ChunkD.limit.maxX }) + .1;
+	reg.limit.minY = std::min({ ChunkA.limit.minY, ChunkB.limit.minY, ChunkC.limit.minY, ChunkD.limit.minY }) - .1;
+	reg.limit.maxY = std::max({ ChunkA.limit.maxY, ChunkB.limit.maxY, ChunkC.limit.maxY, ChunkD.limit.maxY }) + .1;
+	reg.limit.minZ = std::min({ ChunkA.limit.minZ, ChunkB.limit.minZ, ChunkC.limit.minZ, ChunkD.limit.minZ }) - .1;
+	reg.limit.maxZ = std::max({ ChunkA.limit.maxZ, ChunkB.limit.maxZ, ChunkC.limit.maxZ, ChunkD.limit.maxZ }) + .1;
 
 	using namespace glm;
 
@@ -118,14 +127,20 @@ void ns::Sphere::SphereContainer::fillChunkSubRegions(ChunksRegion& reg, uint8_t
 
 	if (size.x > 3 and size.y > 3) {
 		//cut a region into four sub-regions
-		reg.innerRegions = std::make_unique<BiArray<ChunksRegion>>(2, 2);
+		reg.innerRegions = std::make_shared<BiArray<ChunksRegion>>(2, 2);
 		const u16vec2 middleL = reg.firstChunkIndex + size / (u16)2;
 		const u16vec2 middle = middleL + (u16)1;
 
-		reg.innerRegions->emplace(0, 0, ChunksRegion(reg.firstChunkIndex, middleL));
-		reg.innerRegions->emplace(1, 0, ChunksRegion(u16vec2(middle.x, reg.firstChunkIndex.y), u16vec2(reg.lastChunkIndex.x, middleL.y)));
-		reg.innerRegions->emplace(0, 1, ChunksRegion(u16vec2(reg.firstChunkIndex.x, middle.y), u16vec2(middleL.x, reg.lastChunkIndex.y)));
-		reg.innerRegions->emplace(1, 1, ChunksRegion(middle, reg.lastChunkIndex));
+		static ChunksRegion a, b, c, d;
+		a.firstChunkIndex = reg.firstChunkIndex; a.lastChunkIndex = middleL;
+		b.firstChunkIndex = u16vec2(middle.x, reg.firstChunkIndex.y); b.lastChunkIndex = u16vec2(reg.lastChunkIndex.x, middleL.y);
+		c.firstChunkIndex = u16vec2(reg.firstChunkIndex.x, middle.y); c.lastChunkIndex = u16vec2(middleL.x, reg.lastChunkIndex.y);
+		d.firstChunkIndex = middle; d.lastChunkIndex = reg.lastChunkIndex;
+
+		reg.innerRegions->value(0, 0) = a;//ChunksRegion(reg.firstChunkIndex, middleL);
+		reg.innerRegions->value(1, 0) = b;//ChunksRegion(u16vec2(middle.x, reg.firstChunkIndex.y), u16vec2(reg.lastChunkIndex.x, middleL.y));
+		reg.innerRegions->value(0, 1) = c;//ChunksRegion(u16vec2(reg.firstChunkIndex.x, middle.y), u16vec2(middleL.x, reg.lastChunkIndex.y));
+		reg.innerRegions->value(1, 1) = d;//ChunksRegion(middle, reg.lastChunkIndex);
 
 		fillChunkSubRegions((*reg.innerRegions)[0], face);
 		fillChunkSubRegions((*reg.innerRegions)[1], face);
@@ -134,7 +149,7 @@ void ns::Sphere::SphereContainer::fillChunkSubRegions(ChunksRegion& reg, uint8_t
 	}
 }
 
-const ns::Sphere::SphereContainer::ChunksRegion& ns::Sphere::SphereContainer::findRegion(const ChunksRegion& region, const glm::vec3& pos)
+const ns::Sphere::SphereContainer::ChunksRegion& ns::Sphere::SphereContainer::findRegion(const ChunksRegion& region, const glm::vec3& pos) const
 {
 	if (!region.innerRegions)
 		return region;
@@ -144,6 +159,86 @@ const ns::Sphere::SphereContainer::ChunksRegion& ns::Sphere::SphereContainer::fi
 		if (checkCoordIsInLimit(pos, (*region.innerRegions)[i].limit))
 			return findRegion((*region.innerRegions)[i], pos);
 	}
+
+	return region;
+}
+
+const ns::Sphere::SphereContainer::Vertex& ns::Sphere::SphereContainer::vertex(const Index& index) const
+{
+#	ifndef NDEBUG
+	_STL_ASSERT(!index.isNull(), "try to access a null index !");
+#	endif // !NDEBUG
+
+	return vertices_[index.face].value(index.i, index.j);
+}
+
+ns::Sphere::SphereContainer::Vertex& ns::Sphere::SphereContainer::vertex(const Index& index)
+{
+#	ifndef NDEBUG
+	_STL_ASSERT(!index.isNull(), "try to access a null index !");
+#	endif // !NDEBUG
+
+	return vertices_[index.face].value(index.i, index.j);
+}
+
+const ns::Sphere::SphereContainer::Chunk& ns::Sphere::SphereContainer::chunk(const Index& index) const 
+{
+#	ifndef NDEBUG
+	_STL_ASSERT(!index.isNull(), "try to access a null index !");
+#	endif // !NDEBUG
+
+	return terrain_[index.face].value(index.i, index.j);
+}
+
+ns::Sphere::SphereContainer::Chunk& ns::Sphere::SphereContainer::chunk(const ns::Sphere::SphereContainer::Index& index) 
+{
+#	ifndef NDEBUG
+	_STL_ASSERT(!index.isNull(), "try to access a null index !");
+#	endif // !NDEBUG
+
+	return terrain_[index.face].value(index.i, index.j);
+}
+
+ns::Sphere::SphereContainer::Index ns::Sphere::SphereContainer::find(const glm::vec3& position) const
+{
+#	ifndef NDEBUG
+	_STL_ASSERT(glm::length(position) == 1.f, "the vec3 inserted into SphereContainer::find(vec3) was not normalized !");
+#	endif // !NDEBUG
+
+	std::vector<uint8_t> faces;
+
+	if (position.z <= position.x and position.z <= position.y and position.z < 0 or true) faces.push_back(0);
+	if (position.x >= position.y and position.x >= position.z and position.x > 0 or true) faces.push_back(1);
+	if (position.z >= position.x and position.z >= position.y and position.z > 0 or true) faces.push_back(2);
+	if (position.x <= position.y and position.x <= position.z and position.x < 0 or true) faces.push_back(3);
+	if (position.y >= position.x and position.y >= position.z and position.y > 0 or true) faces.push_back(4);
+	if (position.y <= position.x and position.y <= position.z and position.y < 0 or true) faces.push_back(5);
+
+	for (uint8_t f = 0; f < faces.size(); f++)
+	{
+		const auto face = faces[f];
+		const auto& region = findRegion(subRegions[face], position);
+		//dout << "founded region : \n";
+		//logRegion(region);
+
+		for (uint32_t i = region.firstChunkIndex.x; i < static_cast<uint32_t>(region.lastChunkIndex.x + 1); i++)
+		{
+			for (uint32_t j = region.firstChunkIndex.y; j < static_cast<uint32_t>(region.lastChunkIndex.y + 1); j++)
+			{
+				if (checkCoordIsInLimit(position, terrain_[face].value(i, j).limit)) {
+					return Index(face, i, j);
+				}
+			}
+		}
+	}
+	return Index::null;
+}
+
+ns::Sphere::SphereContainer::Index ns::Sphere::SphereContainer::find(const Index& previousIndex) const
+{
+	// TODO : will be easier to implement when the chunk loading system will be done
+	_STL_REPORT_ERROR("not implemented yet !");
+	return Index();
 }
 
 //this create the sphere terrain grid vertices
@@ -177,6 +272,7 @@ void ns::Sphere::SphereContainer::genSphereVertices(SphereContainer* object)
 		vec3(0.0, 0.0, 2.0),
 		vec3(0.0, 0.0, -2.0)
 	};
+	//not used but may be useful in the futur maybe i don't know
 	static const vec3 normals[NUMBER_OF_FACES_IN_A_CUBE]
 	{
 		vec3(0.0, 0.0, -1.0),
@@ -261,6 +357,4 @@ void ns::Sphere::SphereContainer::genSphereVertices(SphereContainer* object)
 		object->fillChunkSubRegions(region, face);
 		logRegion(region);
 	}
-
-	
 }

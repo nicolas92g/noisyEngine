@@ -1,6 +1,7 @@
 #include "Camera.h"
 #include <fstream>
 #include <Utils/yamlConverter.h>
+#include <Utils/DebugLayer.h>
 
 using namespace glm;
 
@@ -59,15 +60,37 @@ void ns::Camera::classicMouseControls(Window& win, double mouseSensivity)
 	//mouse control
 	
 	if (!disableMouse and win.isFocused()) {
-		glm::vec<2, double> cursorPos = win.getCursorPos();
+		const glm::dvec2 middle = win.size() / 2;
+		glm::dvec2 offset = (middle - win.getCursorPos());
+		offset.y *= -1;
 
-		this->setYaw((float)yaw_ - float(mouseSensivity * float(win.width() / 2 - cursorPos.x)));
-		this->setPitch((float)pitch_ + float(mouseSensivity * float(win.height() / 2 - cursorPos.y)));
+		//setYaw((float)yaw_ - float(mouseSensivity * offset.x));
+		//setPitch((float)pitch_ + float(mouseSensivity * offset.y));
 
-		win.setCursorPos((double)win.width() * .5, (double)win.height() * .5);
+		win.setCursorPos(middle.x, middle.y);
 		win.hideCursor();
+				
+		float yAngle = offset.y * mouseSensivity;
+
+		if (yAngle > 0) {
+			float maxAngle = PI - acos(std::max(glm::dot(direction_, upDirection_), -1.f));
 		
-		updateLookWithYawAndPitch();
+			if (yAngle > maxAngle) {
+				yAngle = maxAngle;
+			}
+		}
+		else if(yAngle < 0){
+			float maxAngle = PI - acos(std::max(glm::dot(direction_, -upDirection_), -1.f));
+
+			if (-yAngle > maxAngle) {
+				yAngle = -maxAngle;
+			}
+		}
+
+		direction_ = glm::rotate<float>(offset.x * mouseSensivity, upDirection_) * glm::vec4(direction_, 1.f);
+		direction_ = glm::rotate<float>(yAngle, rightDirection()) * glm::vec4(direction_, 1.f);
+		
+		//updateLookWithYawAndPitch();
 	}
 	else {
 		win.showCursor();
@@ -75,45 +98,44 @@ void ns::Camera::classicMouseControls(Window& win, double mouseSensivity)
 }
 void ns::Camera::classicKeyboardControls(Window& win, float speed)
 {
-	glm::vec3 lookWithoutY = direction_;
-	lookWithoutY.y = 0;
-
+	const glm::vec3 right = rightDirection();
+	const glm::vec3 forward = glm::normalize(glm::cross(right, upDirection_));
+	
+	if (win.key(GLFW_KEY_LEFT_SHIFT)) {
+		speed *= 2;
+	}
 	if (win.key(GLFW_KEY_W)) {
-		position_ += (float)win.deltaTime() * glm::normalize(lookWithoutY) * speed;
+		position_ += (float)win.deltaTime() * forward * speed;
 	}
 	if (win.key(GLFW_KEY_S)) {
-		position_ -= (float)win.deltaTime() * glm::normalize(lookWithoutY) * speed;
+		position_ -= (float)win.deltaTime() * forward * speed;
 	}
-	const glm::vec3 up = glm::vec3(0, 1, 0);
-	//lateral vector
-	glm::vec3 right = glm::normalize(glm::cross(up, direction_));
-
 	if (win.key(GLFW_KEY_A)) {
-		position_ += (float)win.deltaTime() * glm::normalize(right) * speed;
+		position_ += (float)win.deltaTime() * right * speed; 
 	}
 	if (win.key(GLFW_KEY_D)) {
-		position_ -= (float)win.deltaTime() * glm::normalize(right) * speed;
+		position_ -= (float)win.deltaTime() * right * speed;
 	}
 	if (win.key(GLFW_KEY_SPACE)) {
-		position_.y += (float)win.deltaTime() * speed;
+		position_ += (float)win.deltaTime() * upDirection_ * speed;
 	}
 	if (win.key(GLFW_KEY_LEFT_CONTROL)) {
-		position_.y -= (float)win.deltaTime() * speed;
+		position_ -= (float)win.deltaTime() * upDirection_ * speed;
 	}
+
 }
 
 bool ns::Camera::isVertexInTheFieldOfView(const glm::vec3& vertex, float offset)
 {
 	vec4 co = projection_ * view_ * vec4(vertex, 1);
+	if (co.z < -0.1f) return false;
 	vec2 screen = vec2(co.x / co.z, co.y / co.z);
-	if (co.z < -0.1f)
-		return false;
  	return ((screen.x > (-1 - offset) and screen.x < (1 + offset)) and (screen.y > (-1 - offset) and screen.y < (1 + offset)));
 }
 
 glm::vec3 ns::Camera::rightDirection() const
 {
-	return glm::vec3(glm::normalize(-glm::cross(vec3(0.0f,1.0f,0.0f), direction_)));
+	return glm::normalize(glm::cross(upDirection_, direction_));
 }
 
 glm::vec3 ns::Camera::upDirection() const
@@ -161,9 +183,21 @@ float ns::Camera::zFar() const
 	return zFar_;
 }
 
-void ns::Camera::setUpDirection(const glm::vec3& up_)
+void ns::Camera::setUpDirection(const glm::vec3& up)
 {
-	upDirection_ = glm::normalize(up_);
+	const glm::vec3 n = glm::normalize(up);
+	if (n != upDirection_) {
+		if( n == -upDirection_) upDirection_ = n;
+
+		const vec3 axis = cross(n, upDirection_);
+		const float angle = acos(std::min(std::max(dot(n, upDirection_), -1.f), 1.f));
+
+		glm::vec3 dir = (vec4(direction_, 1.f) * rotate(angle, axis));
+		
+		if (!isnan(dir.x)) direction_ = dir;
+
+		upDirection_ = n;
+	}
 }
 
 void ns::Camera::setPitch(float pitch)

@@ -60,7 +60,7 @@ namespace ns {
 		 * @brief return the cursor pos relative to the window
 		 * \return 
 		 */
-		glm::vec<2, double> getCursorPos() const;
+		glm::dvec2 getCursorPos() const;
 		/**
 		 * @brief return the position of the window relative to the monitors
 		 * \return 

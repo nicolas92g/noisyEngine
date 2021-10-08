@@ -128,7 +128,7 @@ bool ns::Window::key(int GLFW_KEY) const
     return glfwGetKey(window_, GLFW_KEY);
 }
 
-glm::vec<2, double> ns::Window::getCursorPos() const
+glm::dvec2 ns::Window::getCursorPos() const
 {
     double x, y;
     glfwGetCursorPos(window_, &x, &y);
@@ -144,9 +144,7 @@ glm::ivec2 ns::Window::position() const
 
 glm::ivec2 ns::Window::size() const
 {
-    glm::ivec2 ret;
-    glfwGetWindowSize(window_, &ret.x, &ret.y);
-    return ret;
+    return {width_, height_};
 }
 
 bool ns::Window::isFocused() const

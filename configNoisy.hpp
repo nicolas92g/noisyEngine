@@ -20,7 +20,7 @@
 #define OPENGL_LOG_PERFORMANCE_ISSUES false
 
 //macros to make sintax faster and more readable
-#define dout std::cout //ns::Debug::get()
+#define dout ns::Debug::get()
 #define newl '\n'
 
 #include <glm/glm.hpp>

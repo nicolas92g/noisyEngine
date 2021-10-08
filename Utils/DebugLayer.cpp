@@ -77,7 +77,7 @@ void ns::Debug::log()
 	static size_t pos = 0;
 	static std::string copy;
 	copy = str();
-	std::cout << copy.substr(pos);
+	std::cout << copy.substr(std::min(pos, copy.size() - 1));
 
 	if(str().size() > 0)
 		pos = str().size() - 1;
