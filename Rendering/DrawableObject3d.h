@@ -14,12 +14,16 @@
 #include <glm/glm.hpp>
 
 namespace ns {
+	template<typename P = DEFAULT_PTYPE, typename D = DEFAULT_DTYPE>
 	/**
 	 * @brief this describe an object that allow to draw an object by reference but add a 3D position, scale and rotation
 	 */
-	class DrawableObject3d : public GeometricObject3d
+	class DrawableObject3d : public GeometricObject3d<P, D>
 	{
 	public:
+		using vec3p = glm::vec<3, P>;
+		using mat4p = glm::mat<4, 4, P>;
+		using vec3d = glm::vec<3, D>;
 		/**
 		 * @brief need a Drawable object (it is possible to create a custom Drawable object or to use for example the ns::Model class)
 		 * \param model the object with a draw call
@@ -29,9 +33,9 @@ namespace ns {
 		 * \param angleInRadians angle of the rotation of the object
 		 */
 		DrawableObject3d(Drawable& mesh,
-			const glm::vec3& position = glm::vec3(0),
-			const glm::vec3& scale = glm::vec3(1),
-			const glm::vec3& axis = {0, 1, 0},
+			const vec3p& position = vec3p(0),
+			const vec3p& scale = vec3p(1),
+			const vec3d& axis = vec3p(0, 1, 0),
 			float angleInRadians = .0f);
 		/**
 		 * @brief new draw call that draw the object and send the position, scale and rotation before
@@ -58,9 +62,9 @@ namespace ns {
 	/**
 	 * @brief used to draw a 3D vector
 	 */
-	class Line : public DirectionalObject3d{
+	class Line : public DirectionalObject3d<>{
 	public:
-		Line(const glm::vec3& vector, const glm::vec3& origin = NS_BLACK) : DirectionalObject3d(origin, vector), length_(1)
+		Line(const glm::vec3& vector, const glm::vec3& origin = NS_BLACK) : DirectionalObject3d<>(origin, vector), length_(1)
 		{
 			glGenVertexArrays(1, &VAO_);
 			glGenBuffers(1, &VBO_);

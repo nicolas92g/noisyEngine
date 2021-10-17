@@ -24,12 +24,12 @@ namespace ns {
 			std::vector<unsigned> indices;
 		};
 		
-		void setCamera(Camera& cam);
+		void setCamera(Camera<>& cam);
 		void setWindow(Window& win);
-		void setRenderer3d(Renderer3d& renderer);
-		void setScenes(const std::vector<ns::Scene*>& scenes);
-		void addScene(Scene& scene);
-		void removeScene(Scene& scene);
+		void setRenderer3d(Renderer3d<>& renderer);
+		void setScenes(const std::vector<ns::Scene<>*>& scenes);
+		void addScene(Scene<>& scene);
+		void removeScene(Scene<>& scene);
 		void clearScenes();
 		void setMeshDescription(const MeshDescription& mesh);
 
@@ -50,10 +50,10 @@ namespace ns {
 		std::stringstream couts_;
 
 		Window* win_;
-		Camera* cam_;
-		Renderer3d* renderer_;
+		Camera<>* cam_;
+		Renderer3d<>* renderer_;
 		MeshDescription mesh_;
-		std::vector<ns::Scene*> scenes_;
+		std::vector<ns::Scene<>*> scenes_;
 
 		int shellMaxChars_;
 		float texturesSize_;
@@ -75,10 +75,10 @@ namespace ns {
 		
 		void shell();
 
-		void inputObject3d(Object3d& obj);
-		void inputDirectionalObject3d(DirectionalObject3d& obj);
-		void inputGeometricObject3d(GeometricObject3d& obj);
-		void inputDrawableObject3d(DrawableObject3d& obj);
+		void inputObject3d(Object3d<>& obj);
+		void inputDirectionalObject3d(DirectionalObject3d<>& obj);
+		void inputGeometricObject3d(GeometricObject3d<>& obj);
+		void inputDrawableObject3d(DrawableObject3d<>& obj);
 
 		void buttonAddTexture(std::optional<ns::TextureView>& tex, ns::Material& mat);
 

@@ -25,7 +25,7 @@ namespace ns {
 		 * \param texture
 		 * \param billboards
 		 */
-		BillboardRenderer(Camera& cam, const TextureView& texture, const std::vector<ns::Billboard>& billboards);
+		BillboardRenderer(Camera<>& cam, const TextureView& texture, const std::vector<ns::Billboard>& billboards);
 		~BillboardRenderer();
 		/**
 		 * @brief replace the array
@@ -39,7 +39,7 @@ namespace ns {
 
 	protected:
 		Shader shader_;
-		Camera& cam_;
+		Camera<>& cam_;
 		TextureView texture_;
 
 		uint32_t numberOfBillboards_;

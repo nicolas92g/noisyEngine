@@ -429,4 +429,126 @@ void ns::Shader::compileShader(const char* vertex, const char* fragment, const c
 	glDeleteShader(fragmentShader);
 }
 
+template<typename T>
+inline void ns::Shader::set(const char* name, T const& value) const
+{
+	static_assert(false, "type is not supported by ns::Shader class");
+}
+template <>
+inline void ns::Shader::set(const char* name, int const& value) const
+{
+	use();
+	glUniform1i(glGetUniformLocation(id, name), value);
+}
+template <>
+inline void ns::Shader::set(const char* name, unsigned int const& value) const
+{
+	use();
+	glUniform1ui(glGetUniformLocation(id, name), value);
+}
+template <>
+inline void ns::Shader::set(const char* name, bool const& value) const
+{
+	use();
+	glUniform1i(glGetUniformLocation(id, name), value);
+}
+template <>
+inline void ns::Shader::set(const char* name, float const& value) const
+{
+	use();
+	glUniform1f(glGetUniformLocation(id, name), value);
+}
+template <>
+inline void ns::Shader::set(const char* name, glm::vec2 const& value) const
+{
+	use();
+	glUniform2fv(glGetUniformLocation(id, name), 1, &value[0]);
+}
+template <>
+inline void ns::Shader::set(const char* name, glm::vec3 const& value) const
+{
+	use();
+	glUniform3fv(glGetUniformLocation(id, name), 1, &value[0]);
+}
+template <>
+inline void ns::Shader::set(const char* name, glm::vec4 const& value) const
+{
+	use();
+	glUniform4fv(glGetUniformLocation(id, name), 1, &value[0]);
+}
+template <>
+inline void ns::Shader::set(const char* name, glm::mat4 const& value) const
+{
+	use();
+	glUniformMatrix4fv(glGetUniformLocation(id, name), 1, false, &value[0][0]);
+}
+template <>
+inline void ns::Shader::set(const char* name, glm::ivec2 const& value) const
+{
+	use();
+	glUniform2iv(glGetUniformLocation(id, name), 1, &value[0]);
+}
+template <>
+inline void ns::Shader::set(const char* name, glm::ivec3 const& value) const
+{
+	use();
+	glUniform3iv(glGetUniformLocation(id, name), 1, &value[0]);
+}
+template <>
+inline void ns::Shader::set(const char* name, glm::ivec4 const& value) const
+{
+	use();
+	glUniform4iv(glGetUniformLocation(id, name), 1, &value[0]);
+}
+template <>
+inline void ns::Shader::set(const char* name, double const& value) const
+{
+	use();
+	glUniform1d(glGetUniformLocation(id, name), value);
+}
+template <>
+inline void ns::Shader::set(const char* name, glm::dvec2 const& value) const
+{
+	use();
+	glUniform2dv(glGetUniformLocation(id, name), 1, &value[0]);
+}
+template <>
+inline void ns::Shader::set(const char* name, glm::dvec3 const& value) const
+{
+	use();
+	glUniform3dv(glGetUniformLocation(id, name), 1, &value[0]);
+	//__debugbreak();
+}
+template <>
+inline void ns::Shader::set(const char* name, glm::dvec4 const& value) const
+{
+	use();
+	glUniform4dv(glGetUniformLocation(id, name), 1, &value[0]);
+}
+template <>
+inline void ns::Shader::set(const char* name, glm::dmat4 const& value) const
+{
+	use();
+	glUniformMatrix4dv(glGetUniformLocation(id, name), 1, false, &value[0][0]);
+	//__debugbreak();
+}
 
+void ShadersetFixLinkFunction(){
+	ns::Shader s("");
+	s.set<int>("", 0);
+	s.set<unsigned>("", 0);
+	s.set<bool>("", 0);
+	s.set<float>("", 0);
+	s.set<double>("", 0);
+	s.set<glm::vec2>("", {0, 0});
+	s.set<glm::vec3>("", {0, 0, 0});
+	s.set<glm::vec4>("", {0, 0, 0, 0});
+	s.set<glm::mat4>("", glm::mat4());
+	s.set<glm::ivec2>("", { 0, 0 });
+	s.set<glm::ivec3>("", { 0, 0, 0 });
+	s.set<glm::ivec4>("", { 0, 0, 0, 0 });
+	s.set<glm::dvec2>("", { 0, 0 });
+	s.set<glm::dvec3>("", { 0, 0, 0 });
+	s.set<glm::dvec4>("", { 0, 0, 0, 0 });
+	s.set<glm::dmat4>("", glm::dmat4());
+}

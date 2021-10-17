@@ -22,7 +22,6 @@ namespace ns::Sphere
 	protected:
 		const float sphereRadius_;	//radius of the sphere that is an array of those chunks
 		uint16_t resolution_; //the resolution is the sqrt of the number of squares that compound the chunk (the chunk is a grid with a size of res * res )
-		BiArray<glm::vec3> grid_;
 		std::unique_ptr<Mesh> mesh_;
 	};
 }

@@ -1,7 +1,7 @@
 #include "BillboardRenderer.h"
 #include <configNoisy.hpp>
 
-ns::BillboardRenderer::BillboardRenderer(Camera& cam, const TextureView& texture, const std::vector<ns::Billboard>& billboards)
+ns::BillboardRenderer::BillboardRenderer(Camera<>& cam, const TextureView& texture, const std::vector<ns::Billboard>& billboards)
 	:
 	cam_(cam),
 	texture_(texture),

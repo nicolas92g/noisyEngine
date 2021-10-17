@@ -36,7 +36,7 @@ namespace ns::Plane{
 
 		void update(const GridPositionType& centralChunk);
 
-		Scene& lockScene();
+		Scene<>& lockScene();
 		void unlockScene();
 
 		void setRenderDistance(uint16_t renderDistance);
@@ -56,7 +56,7 @@ namespace ns::Plane{
 
 		struct Chunk {
 			std::shared_ptr<Mesh> mesh;					//chunk mesh
-			std::shared_ptr<DrawableObject3d> object;	//chunk object
+			std::shared_ptr<DrawableObject3d<>> object;	//chunk object
 			GridPositionType position;					//position on a grid plane 
 			bool wasProcessed = false;					//indicate if the chunk is loaded or currently in loading
 		};
@@ -73,7 +73,7 @@ namespace ns::Plane{
 		MeshGenerator meshGen_;
 
 		//data storage
-		Scene scene_;
+		Scene<> scene_;
 		std::mutex sceneMutex_;
 
 		std::vector<ChunkToCreate> chunksData_;

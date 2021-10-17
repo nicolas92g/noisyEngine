@@ -3,10 +3,14 @@
 #include <glm/gtx/transform.hpp>
 #include <Utils/DebugLayer.h>
 
-unsigned ns::Object3d::entityCount(0);
-std::unordered_map < std::string, ns::Object3d* > objects;
+template<typename P, typename D>
+unsigned ns::Object3d<P, D>::entityCount(0);
 
-ns::Object3d::Object3d(const glm::vec3& position)
+template<typename P, typename D>
+std::unordered_map<std::string, ns::Object3d<P, D>*> objects;
+
+template<typename P, typename D>
+ns::Object3d<P, D>::Object3d<P, D>(const vec3p& position)
 	:
 	position_(position)
 {
@@ -14,41 +18,47 @@ ns::Object3d::Object3d(const glm::vec3& position)
 	entityCount++;
 }
 
-glm::vec3 ns::Object3d::position() const
+template<typename P, typename D>
+ns::Object3d<P, D>::vec3p const& ns::Object3d<P, D>::position() const
 {
 	return position_;
 }
 
-glm::vec3 ns::Object3d::WorldPosition() const
+template<typename P, typename D>
+ns::Object3d<P, D>::vec3p ns::Object3d<P, D>::WorldPosition() const
 {
 	using namespace glm;
 	//if there is no parent
 	if (!parent_.has_value()) return position_;
 
 	//if it is a geometric Object3d
-	ns::GeometricObject3d* ptr = dynamic_cast<ns::GeometricObject3d*>(parent_.value());
+	ns::GeometricObject3d<>* ptr = dynamic_cast<ns::GeometricObject3d<>*>(parent_.value());
 	if (ptr) return vec3(ptr->modelMatrix() * vec4(position_, 1.0f));
 
 	//if parent is an Object3d ot a DirectionalObject3d
 	return parent_.value()->WorldPosition() + position_;
 }
 
-const std::string& ns::Object3d::name() const
+template<typename P, typename D>
+const std::string& ns::Object3d<P, D>::name() const
 {
 	return name_;
 }
 
-void ns::Object3d::setPosition(const glm::vec3& position)
+template<typename P, typename D>
+void ns::Object3d<P, D>::setPosition(const vec3p& position)
 {
 	position_ = position;
 }
 
-void ns::Object3d::setName(const std::string& name)
+template<typename P, typename D>
+void ns::Object3d<P, D>::setName(const std::string& name)
 {
 	name_ = name;
 }
 
-void ns::Object3d::setParent(Object3d* parent)
+template<typename P, typename D>
+void ns::Object3d<P, D>::setParent(Object3d* parent)
 {
 	if (parent == this) {
 		Debug::get() << "error : try to parent an object with himself !\n";
@@ -58,23 +68,27 @@ void ns::Object3d::setParent(Object3d* parent)
 		parent_ = parent;
 }
 
-void ns::Object3d::removeParent()
+template<typename P, typename D>
+void ns::Object3d<P, D>::removeParent()
 {
 	position_ = WorldPosition();
 	parent_.reset();
 }
 
-bool ns::Object3d::hasParent() const
+template<typename P, typename D>
+bool ns::Object3d<P, D>::hasParent() const
 {
 	return parent_.has_value();
 }
 
-ns::Object3d* ns::Object3d::parent() const
+template<typename P, typename D>
+ns::Object3d<P, D>* ns::Object3d<P, D>::parent() const
 {
 	return parent_.value_or(nullptr);
 }
 
-YAML::Node ns::Object3d::inputFromYAML(const std::string& filepath)
+template<typename P, typename D>
+YAML::Node ns::Object3d<P, D>::inputFromYAML(const std::string& filepath)
 {
 	using namespace YAML;
 
@@ -85,41 +99,46 @@ YAML::Node ns::Object3d::inputFromYAML(const std::string& filepath)
 	return conf;
 }
 
-bool ns::Object3d::isGeometricObject3d()
+template<typename P, typename D>
+bool ns::Object3d<P, D>::isGeometricObject3d()
 {
-	return dynamic_cast<ns::GeometricObject3d*>(this);
+	return dynamic_cast<ns::GeometricObject3d<P, D>*>(this);
 }
 
-bool ns::Object3d::isDirectionalObject3d()
+template<typename P, typename D>
+bool ns::Object3d<P, D>::isDirectionalObject3d()
 {
-	return dynamic_cast<ns::DirectionalObject3d*>(this);
+	return dynamic_cast<ns::DirectionalObject3d<P, D>*>(this);
 }
 
-ns::DirectionalObject3d::DirectionalObject3d(const glm::vec3& position, const glm::vec3& direction)
+template<typename P, typename D>
+ns::DirectionalObject3d<P, D>::DirectionalObject3d(const vec3p& position, const vec3d& direction)
 	:
-	Object3d(position)
+	Object3d<P, D>(position)
 {
 	setDirection(direction);
 }
 
-void ns::DirectionalObject3d::setDirection(const glm::vec3& direction)
+template<typename P, typename D>
+void ns::DirectionalObject3d<P, D>::setDirection(const vec3d& direction)
 {
 	direction_ = glm::normalize(direction);
 }
 
-glm::vec3 ns::DirectionalObject3d::direction() const
+template<typename P, typename D>
+const glm::vec<3, D>& ns::DirectionalObject3d<P, D>::direction() const
 {
-	if (!parent_.has_value()) return direction_;
+	if (!this->parent_.has_value()) return direction_;
 
 	using namespace glm;
 #	if NS_GEOMETRIC_OBJECT3D_STORE_ALL_MATRICES
 	//if parent is a geometric object
-	GeometricObject3d* ptr = dynamic_cast<GeometricObject3d*>(parent_.value());
-	if (ptr) return vec3(ptr->rotationMatrix() * vec4(direction_, 1));
+	GeometricObject3d<P, D>* ptr = dynamic_cast<GeometricObject3d<P, D>*>(parent_.value());
+	if (ptr) return vec3p(ptr->rotationMatrix() * vec4(direction_, 1));
 #	endif
 
 	//if parent is a directional object
-	DirectionalObject3d* ptr2 = dynamic_cast<DirectionalObject3d*>(parent_.value());
+	DirectionalObject3d<P, D>* ptr2 = dynamic_cast<DirectionalObject3d<P, D>*>(this->parent_.value());
 	if (ptr2) {
 		return ptr2->direction();
 	}
@@ -128,9 +147,10 @@ glm::vec3 ns::DirectionalObject3d::direction() const
 	return direction_;
 }
 
-ns::GeometricObject3d::GeometricObject3d(const glm::vec3& position, const glm::vec3& scale, const glm::vec3& axis, float angle)
+template<typename P, typename D>
+ns::GeometricObject3d<P, D>::GeometricObject3d(const vec3p& position, const vec3p& scale, const vec3d& axis, D angle)
 	:
-	Object3d(position),
+	Object3d<P, D>(position),
 	scale_(scale),
 	axis_(axis),
 	angle_(angle)
@@ -138,62 +158,93 @@ ns::GeometricObject3d::GeometricObject3d(const glm::vec3& position, const glm::v
 	update();
 }
 
-void ns::GeometricObject3d::update()
+template<typename P, typename D>
+void ns::GeometricObject3d<P, D>::update()
 {
 #if not NS_GEOMETRIC_OBJECT3D_STORE_ALL_MATRICES
 	static glm::mat4 translationMatrix_, scaleMatrix_, rotationMatrix_;
 #endif // NS_GEOMETRIC_OBJECT3D_STORE_ALL_MATRICES
 
-	translationMatrix_ = glm::translate(WorldPosition());
+	translationMatrix_ = glm::translate(this->WorldPosition());
 	scaleMatrix_ = glm::scale(scale_);
 	rotationMatrix_ = glm::rotate(angle_, axis_);
 	modelMatrix_ = translationMatrix_ * rotationMatrix_ * scaleMatrix_;
 }
 
-void ns::GeometricObject3d::setScale(const glm::vec3& newScale)
+template<typename P, typename D>
+void ns::GeometricObject3d<P, D>::setScale(const vec3p& newScale)
 {
 	scale_ = newScale;
 }
 
-void ns::GeometricObject3d::setRotation(const glm::vec3& axis, float angleInRadians)
+template<typename P, typename D>
+void ns::GeometricObject3d<P, D>::setRotation(const vec3d& axis, D angleInRadians)
 {
 	angle_ = angleInRadians;
 	axis_ = glm::normalize(axis);
 }
 
-glm::vec3 ns::GeometricObject3d::scale() const
+template<typename P, typename D>
+const glm::vec<3, P>& ns::GeometricObject3d<P, D>::scale() const
 {
 	return scale_;
 }
 
-glm::vec3 ns::GeometricObject3d::rotationAxis() const
+template<typename P, typename D>
+const glm::vec<3, D>& ns::GeometricObject3d<P, D>::rotationAxis() const
 {
 	return axis_;
 }
 
-float ns::GeometricObject3d::rotationAngle() const
+template<typename P, typename D>
+D ns::GeometricObject3d<P, D>::rotationAngle() const
 {
 	return angle_;
 }
 
-const glm::mat4& ns::GeometricObject3d::modelMatrix() const
+template<typename P, typename D>
+const glm::mat<4, 4, P>& ns::GeometricObject3d<P, D>::modelMatrix() const
 {
 	return modelMatrix_;
 }
 
+
 #if NS_GEOMETRIC_OBJECT3D_STORE_ALL_MATRICES
-const glm::mat4& ns::GeometricObject3d::translationMatrix() const
+template<typename P, typename D>
+const glm::mat<4, 4, P>& ns::GeometricObject3d<P, D>::translationMatrix() const
 {
 	return translationMatrix_;
 }
 
-const glm::mat4& ns::GeometricObject3d::scaleMatrix() const
+template<typename P, typename D>
+const glm::mat<4, 4, P>& ns::GeometricObject3d<P, D>::scaleMatrix() const
 {
 	return scaleMatrix_;
 }
 
-const glm::mat4& ns::GeometricObject3d::rotationMatrix() const
+template<typename P, typename D>
+const glm::mat<4, 4, P>& ns::GeometricObject3d<P, D>::rotationMatrix() const
 {
 	return rotationMatrix_;
 }
 #endif
+
+//this function must not be used because it is use to fix some link issues
+template<typename P, typename D>
+void templateLinkFixerFunction_Object3d_() {
+	_STL_REPORT_ERROR("the fix link function has been called");
+	using namespace glm;
+	//call all the functions that need to be linked well
+	ns::Object3d<P, D> templatedObject1(vec3(0));
+	ns::DirectionalObject3d<P, D> dirLight(vec3(0), vec3(0));
+	dirLight.setDirection(vec3(0));
+	dirLight.direction();
+	ns::GeometricObject3d<P, D> templatedObject3(vec3(0), vec3(0), vec3(0), 0);
+}
+
+void LinkFixerFunction_Object3d_(){
+	templateLinkFixerFunction_Object3d_<float, float>();
+	templateLinkFixerFunction_Object3d_<double, float>();
+	templateLinkFixerFunction_Object3d_<float, double>();
+	templateLinkFixerFunction_Object3d_<double, double>();
+}

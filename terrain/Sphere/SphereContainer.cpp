@@ -5,13 +5,14 @@
 #include <mutex>
 
 const ns::Sphere::SphereContainer::Index ns::Sphere::SphereContainer::Index::null(NULL_FACE_INDEX);
+std::array<std::vector<glm::ivec2>, ns::maximunRenderDistance> ns::Sphere::SphereContainer::loadingOrder = ns::Sphere::SphereContainer::getOrder();
 
 ns::Sphere::SphereContainer::SphereContainer(uint32_t resolution, float sphereRadius)
 	:
 	resolution_(resolution + resolution % 2),//resolution is forced to be an even number
 	resolutionPlusOne_(resolution_ + 1),
 	radius_(sphereRadius),
-	sphereThread_(&genSphereVertices, this),
+	//sphereThread_(&genSphereVertices, this),
 	terrain_({ 
 		BiArray<SphereContainer::Chunk>(glm::ivec2(resolution_)),
 		BiArray<SphereContainer::Chunk>(glm::ivec2(resolution_)),
@@ -20,15 +21,16 @@ ns::Sphere::SphereContainer::SphereContainer(uint32_t resolution, float sphereRa
 		BiArray<SphereContainer::Chunk>(glm::ivec2(resolution_)),
 		BiArray<SphereContainer::Chunk>(glm::ivec2(resolution_))}),
 	vertices_({
-		BiArray<SphereContainer::Vertex>(glm::ivec2(resolutionPlusOne_)),
-		BiArray<SphereContainer::Vertex>(glm::ivec2(resolutionPlusOne_)),
-		BiArray<SphereContainer::Vertex>(glm::ivec2(resolutionPlusOne_)),
-		BiArray<SphereContainer::Vertex>(glm::ivec2(resolutionPlusOne_)),
-		BiArray<SphereContainer::Vertex>(glm::ivec2(resolutionPlusOne_)),
-		BiArray<SphereContainer::Vertex>(glm::ivec2(resolutionPlusOne_))
+		BiArray<glm::vec3>(glm::ivec2(resolutionPlusOne_)),
+		BiArray<glm::vec3>(glm::ivec2(resolutionPlusOne_)),
+		BiArray<glm::vec3>(glm::ivec2(resolutionPlusOne_)),
+		BiArray<glm::vec3>(glm::ivec2(resolutionPlusOne_)),
+		BiArray<glm::vec3>(glm::ivec2(resolutionPlusOne_)),
+		BiArray<glm::vec3>(glm::ivec2(resolutionPlusOne_))
 	})
 {
-	sphereThread_.join();
+	genSphereVertices(this);
+	//sphereThread_.join();
 }
 
 double ns::Sphere::SphereContainer::sphereProgressionPercentage() const
@@ -51,12 +53,12 @@ std::shared_ptr<ns::Mesh> ns::Sphere::SphereContainer::getDebugSphere() const
 			for (uint32_t i = 0; i < resolution_; ++i)
 			{
 				auto& value = terrain_[face].value(i, j);
-				verts.emplace_back(vertex(value.coords.d).position);
-				verts.emplace_back(vertex(value.coords.c).position);
-				verts.emplace_back(vertex(value.coords.c).position);
-				verts.emplace_back(vertex(value.coords.a).position);
-				verts.emplace_back(vertex(value.coords.a).position);
-				verts.emplace_back(vertex(value.coords.b).position);
+				verts.emplace_back(vertex(value.coords.d));
+				verts.emplace_back(vertex(value.coords.c));
+				verts.emplace_back(vertex(value.coords.c));
+				verts.emplace_back(vertex(value.coords.a));
+				verts.emplace_back(vertex(value.coords.a));
+				verts.emplace_back(vertex(value.coords.b));
 			}
 		}
 	}
@@ -78,6 +80,33 @@ float ns::Sphere::SphereContainer::radius() const
 	return radius_;
 }
 
+void ns::Sphere::SphereContainer::update(const glm::vec3& direction)
+{
+	const Index centralChunk = find(direction);
+	if (!centralChunk.isNull())
+		centralChunk_ = centralChunk;
+	
+	for (size_t d = 0; d < loadingOrder.size(); d++)
+	{
+		for (size_t i = 0; i < loadingOrder[d].size(); i++)
+		{
+			Index index = centralChunk_;
+			index.add(loadingOrder[d][i], resolution_);
+
+			if (loadChunk(index)) return;
+		}
+	}
+
+
+}
+
+void ns::Sphere::SphereContainer::draw(const ns::Shader& shader) const
+{
+	for (const Chunk* chunk : loadedChunks_) {
+		chunk->mesh->draw(shader);
+	}
+}
+
 bool ns::Sphere::SphereContainer::checkCoordIsInLimit(const glm::vec3& position, const ChunkLimits& limit) const
 {
 	const glm::vec3 pos = glm::normalize(position) * radius_;
@@ -89,9 +118,9 @@ bool ns::Sphere::SphereContainer::checkCoordIsInLimit(const glm::vec3& position,
 void ns::Sphere::SphereContainer::fillChunkLimits(ChunkLimits& limit, const ChunkCoords& chunk)
 {
 	//put each position component in an array
-	std::array<float, 4> Xs{ vertex(chunk.a).position.x , vertex(chunk.b).position.x , vertex(chunk.c).position.x , vertex(chunk.d).position.x };
-	std::array<float, 4> Ys{ vertex(chunk.a).position.y , vertex(chunk.b).position.y , vertex(chunk.c).position.y , vertex(chunk.d).position.y };
-	std::array<float, 4> Zs{ vertex(chunk.a).position.z , vertex(chunk.b).position.z , vertex(chunk.c).position.z , vertex(chunk.d).position.z };
+	std::array<float, 4> Xs{ vertex(chunk.a).x , vertex(chunk.b).x , vertex(chunk.c).x , vertex(chunk.d).x };
+	std::array<float, 4> Ys{ vertex(chunk.a).y , vertex(chunk.b).y , vertex(chunk.c).y , vertex(chunk.d).y };
+	std::array<float, 4> Zs{ vertex(chunk.a).z , vertex(chunk.b).z , vertex(chunk.c).z , vertex(chunk.d).z };
 
 	//sort those arrays
 	std::sort(Xs.begin(), Xs.end());
@@ -131,16 +160,10 @@ void ns::Sphere::SphereContainer::fillChunkSubRegions(ChunksRegion& reg, uint8_t
 		const u16vec2 middleL = reg.firstChunkIndex + size / (u16)2;
 		const u16vec2 middle = middleL + (u16)1;
 
-		static ChunksRegion a, b, c, d;
-		a.firstChunkIndex = reg.firstChunkIndex; a.lastChunkIndex = middleL;
-		b.firstChunkIndex = u16vec2(middle.x, reg.firstChunkIndex.y); b.lastChunkIndex = u16vec2(reg.lastChunkIndex.x, middleL.y);
-		c.firstChunkIndex = u16vec2(reg.firstChunkIndex.x, middle.y); c.lastChunkIndex = u16vec2(middleL.x, reg.lastChunkIndex.y);
-		d.firstChunkIndex = middle; d.lastChunkIndex = reg.lastChunkIndex;
-
-		reg.innerRegions->value(0, 0) = a;//ChunksRegion(reg.firstChunkIndex, middleL);
-		reg.innerRegions->value(1, 0) = b;//ChunksRegion(u16vec2(middle.x, reg.firstChunkIndex.y), u16vec2(reg.lastChunkIndex.x, middleL.y));
-		reg.innerRegions->value(0, 1) = c;//ChunksRegion(u16vec2(reg.firstChunkIndex.x, middle.y), u16vec2(middleL.x, reg.lastChunkIndex.y));
-		reg.innerRegions->value(1, 1) = d;//ChunksRegion(middle, reg.lastChunkIndex);
+		reg.innerRegions->value(0, 0) = ChunksRegion(reg.firstChunkIndex, middleL);
+		reg.innerRegions->value(1, 0) = ChunksRegion(u16vec2(middle.x, reg.firstChunkIndex.y), u16vec2(reg.lastChunkIndex.x, middleL.y));
+		reg.innerRegions->value(0, 1) = ChunksRegion(u16vec2(reg.firstChunkIndex.x, middle.y), u16vec2(middleL.x, reg.lastChunkIndex.y));
+		reg.innerRegions->value(1, 1) = ChunksRegion(middle, reg.lastChunkIndex);
 
 		fillChunkSubRegions((*reg.innerRegions)[0], face);
 		fillChunkSubRegions((*reg.innerRegions)[1], face);
@@ -163,7 +186,7 @@ const ns::Sphere::SphereContainer::ChunksRegion& ns::Sphere::SphereContainer::fi
 	return region;
 }
 
-const ns::Sphere::SphereContainer::Vertex& ns::Sphere::SphereContainer::vertex(const Index& index) const
+const glm::vec3& ns::Sphere::SphereContainer::vertex(const Index& index) const
 {
 #	ifndef NDEBUG
 	_STL_ASSERT(!index.isNull(), "try to access a null index !");
@@ -172,7 +195,7 @@ const ns::Sphere::SphereContainer::Vertex& ns::Sphere::SphereContainer::vertex(c
 	return vertices_[index.face].value(index.i, index.j);
 }
 
-ns::Sphere::SphereContainer::Vertex& ns::Sphere::SphereContainer::vertex(const Index& index)
+glm::vec3& ns::Sphere::SphereContainer::vertex(const Index& index)
 {
 #	ifndef NDEBUG
 	_STL_ASSERT(!index.isNull(), "try to access a null index !");
@@ -199,20 +222,27 @@ ns::Sphere::SphereContainer::Chunk& ns::Sphere::SphereContainer::chunk(const ns:
 	return terrain_[index.face].value(index.i, index.j);
 }
 
+bool ns::Sphere::SphereContainer::isLoaded(const Index& index) const
+{
+	return chunk(index).mesh.operator bool();
+}
+
 ns::Sphere::SphereContainer::Index ns::Sphere::SphereContainer::find(const glm::vec3& position) const
 {
 #	ifndef NDEBUG
-	_STL_ASSERT(glm::length(position) == 1.f, "the vec3 inserted into SphereContainer::find(vec3) was not normalized !");
+	auto l = glm::length(position);
+	_STL_ASSERT(std::abs(1.f - l) < .1f, ("the vec3 inserted into SphereContainer::find(vec3) was not normalized ! l " + std::to_string(l)).c_str());
 #	endif // !NDEBUG
 
-	std::vector<uint8_t> faces;
+	static std::vector<uint8_t> faces(6);
+	faces.clear();
 
-	if (position.z <= position.x and position.z <= position.y and position.z < 0 or true) faces.push_back(0);
-	if (position.x >= position.y and position.x >= position.z and position.x > 0 or true) faces.push_back(1);
-	if (position.z >= position.x and position.z >= position.y and position.z > 0 or true) faces.push_back(2);
-	if (position.x <= position.y and position.x <= position.z and position.x < 0 or true) faces.push_back(3);
-	if (position.y >= position.x and position.y >= position.z and position.y > 0 or true) faces.push_back(4);
-	if (position.y <= position.x and position.y <= position.z and position.y < 0 or true) faces.push_back(5);
+	if (position.z <= position.x and position.z <= position.y and position.z < 0) faces.push_back(0);
+	if (position.x >= position.y and position.x >= position.z and position.x > 0) faces.push_back(1);
+	if (position.z >= position.x and position.z >= position.y and position.z > 0) faces.push_back(2);
+	if (position.x <= position.y and position.x <= position.z and position.x < 0) faces.push_back(3);
+	if (position.y >= position.x and position.y >= position.z and position.y > 0) faces.push_back(4);
+	if (position.y <= position.x and position.y <= position.z and position.y < 0) faces.push_back(5);
 
 	for (uint8_t f = 0; f < faces.size(); f++)
 	{
@@ -234,11 +264,50 @@ ns::Sphere::SphereContainer::Index ns::Sphere::SphereContainer::find(const glm::
 	return Index::null;
 }
 
-ns::Sphere::SphereContainer::Index ns::Sphere::SphereContainer::find(const Index& previousIndex) const
+ns::Sphere::SphereContainer::Index ns::Sphere::SphereContainer::find(const Index& previousIndex, const glm::vec3& normalizedVector) const
 {
 	// TODO : will be easier to implement when the chunk loading system will be done
 	_STL_REPORT_ERROR("not implemented yet !");
 	return Index();
+}
+
+bool ns::Sphere::SphereContainer::loadChunk(const Index& index)
+{
+	if (!isLoaded(index)) {
+		auto& c = chunk(index);
+
+		std::array<glm::vec3, 4> square{
+			vertex(c.coords.a),
+			vertex(c.coords.b),
+			vertex(c.coords.c),
+			vertex(c.coords.d)
+		};
+
+		c.mesh = std::make_shared<SphereChunk>(square, radius_, 20);
+		c.index = index;
+		loadedChunks_.push_back(&c);
+		return true;
+	}
+	return false;
+}
+
+bool ns::Sphere::SphereContainer::unloadChunk(const Index& index)
+{
+	if (isLoaded(index)) {
+		bool founded = false;
+		for (auto it = loadedChunks_.begin(); it != loadedChunks_.end(); ++it)
+		{
+			if (*it == &chunk(index)) {
+				loadedChunks_.erase(it);
+				founded = true;
+				break;
+			}
+		}
+		
+		chunk(index).mesh.reset();
+		return true;
+	}
+	return false;
 }
 
 //this create the sphere terrain grid vertices
@@ -272,7 +341,7 @@ void ns::Sphere::SphereContainer::genSphereVertices(SphereContainer* object)
 		vec3(0.0, 0.0, 2.0),
 		vec3(0.0, 0.0, -2.0)
 	};
-	//not used but may be useful in the futur maybe i don't know
+	//not used but may be useful in the futur i don't know
 	static const vec3 normals[NUMBER_OF_FACES_IN_A_CUBE]
 	{
 		vec3(0.0, 0.0, -1.0),
@@ -305,16 +374,11 @@ void ns::Sphere::SphereContainer::genSphereVertices(SphereContainer* object)
 					p.z * std::sqrt(1.0f - 0.5f * (p2.x + p2.y) + p2.x * p2.y / 3.0f)
 				);
 
-				if(j == 0)
-					std::cout << to_string(n) << ",\n";
-
 				object->vertices_[face].emplace(i, j, { n * object->radius_ });
 				object->sphereProgression_++;
 			}
-			std::cout << newl;
 			//std::cout << object->sphereProgressionPercentage() << " %" << newl;
 		}
-		std::cout << "\n----\n\n";
 	}
 
 	const uint32_t k = object->resolutionPlusOne_;
@@ -342,6 +406,7 @@ void ns::Sphere::SphereContainer::genSphereVertices(SphereContainer* object)
 				value.coords.d.j = j + 1;
 
 				object->fillChunkLimits(value.limit, value.coords);
+				//object->loadChunk(Index(face, i, j));
 			}
 		}
 	}
@@ -355,6 +420,126 @@ void ns::Sphere::SphereContainer::genSphereVertices(SphereContainer* object)
 
 		//recursively create all the sub-regions
 		object->fillChunkSubRegions(region, face);
-		logRegion(region);
+		//logRegion(region);
+	}
+}
+
+std::array<std::vector<glm::ivec2>, ns::maximunRenderDistance> ns::Sphere::SphereContainer::getOrder()
+{
+	//(dst, dst) / (-1, 0) * dst * 2 / (0, -1) * dst * 2 / (1, 0) * dst * 2 / (0, 1) * (dst * 2 - 1)
+	std::array<std::vector<glm::ivec2>, maximunRenderDistance> ret;
+
+	//central chunk offset is of course null
+	ret[0].push_back(glm::ivec2(0, 0));
+
+	for (size_t dst = 1; dst < maximunRenderDistance; dst++)
+	{
+		std::vector<glm::ivec2>& circle = ret[dst];
+		circle.resize(8 * dst);
+
+		//start by the chunk that is at ivec2(dst - 1, dst)
+		circle[0] = glm::ivec2(dst - 1, dst);
+		unsigned cursor = 1;
+
+		//then go to the top-left corner
+		for (size_t i = 0; i < dst * 2 - 1; i++)
+		{
+			circle[cursor] = circle[cursor - 1] + glm::ivec2(-1, 0);
+			cursor++;
+		}
+		//then to the bottom-left corner
+		for (size_t i = 0; i < dst * 2; i++)
+		{
+			circle[cursor] = circle[cursor - 1] + glm::ivec2(0, -1);
+			cursor++;
+		}
+		//then to the bottom-right corner
+		for (size_t i = 0; i < dst * 2; i++)
+		{
+			circle[cursor] = circle[cursor - 1] + glm::ivec2(1, 0);
+			cursor++;
+		}
+		//then just under the start at ivec2(dst, dst - 1)
+		for (size_t i = 0; i < dst * 2; i++)
+		{
+			circle[cursor] = circle[cursor - 1] + glm::ivec2(0, 1);
+			cursor++;
+		}
+		//and all the chunks in the square that has a size of dst * 2 + 1 are in the array at the index dst
+	}
+	return ret;
+}
+
+void ns::Sphere::SphereContainer::Index::add(glm::ivec2 offset, uint32_t resolution)
+{
+	using namespace glm;
+
+	ivec2 pos = ivec2(i, j) + offset;
+
+	bool left = pos.x < 0;
+	bool right = pos.x >= resolution;
+	bool bottom = pos.y < 0;
+	bool top = pos.y >= resolution;
+
+	if (!(left or right or bottom or top)) {
+		i = pos.x;
+		j = pos.y;
+		return;
+	}
+
+	switch (face) {
+		case 0:
+			if (left) {
+				face = 3;
+				add(offset + glm::ivec2(resolution, 0), resolution);
+			}
+			else if (right) {
+				face = 1;
+				add(offset - glm::ivec2(resolution, 0), resolution);
+			}
+			if (bottom) {
+				face = 5;
+				add(offset + glm::ivec2(0, resolution), resolution);
+			}
+			else if (top) {
+				face = 4;
+				add(offset - glm::ivec2(0, resolution), resolution);
+			}
+
+			break;
+		case 1:
+			if (left) {
+				face = 0;
+				add(offset + glm::ivec2(resolution, 0), resolution);
+			}
+			else if (right) {
+				face = 2;
+				add(offset - glm::ivec2(resolution, 0), resolution);
+			}
+			if (bottom) {
+				face = 5;
+				std::swap(i, j);
+				add(offset + glm::ivec2(resolution, 0), resolution);
+			}
+			else if (top) {
+				face = 4;
+				std::swap(i, j);
+				add(offset - glm::ivec2(resolution, 0), resolution);
+			}
+			break;
+		case 2:
+
+			break;
+		case 3:
+
+			break;
+		case 4:
+
+			break;
+		case 5:
+
+			break;
+		default:
+			break;
 	}
 }

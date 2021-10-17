@@ -21,9 +21,9 @@ namespace ns {
 
 	protected:
 		Window window_;
-		Camera cam_;
-		Scene scene_;
-		Renderer3d renderer_;
+		Camera<> cam_;
+		Scene<> scene_;
+		Renderer3d<> renderer_;
 		Plane::HeightMapGenerator::Settings generation_;
 
 		GeneratorInterfaceSettings settings_;

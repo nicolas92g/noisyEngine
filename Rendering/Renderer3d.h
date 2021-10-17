@@ -52,6 +52,8 @@ namespace ns {
 		float exposure;
 		float ambientIntensity;
 	};
+
+	template<typename P = DEFAULT_PTYPE, typename D = DEFAULT_DTYPE>
 	/**
 	 * @brief allow to render a scene with a pbr simulation.
 	 * this renderer implement :
@@ -73,7 +75,7 @@ namespace ns {
 		 * \param scene
 		 * \param info
 		 */
-		Renderer3d(Window& window, Camera& camera, Scene& scene, const Renderer3dConfigInfo& info = Renderer3dConfigInfo());
+		Renderer3d(Window& window, Camera<P, D>& camera, Scene<P, D>& scene, const Renderer3dConfigInfo& info = Renderer3dConfigInfo());
 		/**
 		 * @brief delete all the object allocated by the renderer on the GPU and the CPU
 		 */
@@ -91,12 +93,12 @@ namespace ns {
 		 * @brief change the camera of the renderer
 		 * \param camera
 		 */
-		void setCamera(Camera& camera);
+		void setCamera(Camera<P, D>& camera);
 		/**
 		 * @brief change the scene container
 		 * \param scene
 		 */
-		void setScene(Scene& scene);
+		void setScene(Scene<P, D>& scene);
 		/**
 		 * @brief get the settings of this renderer
 		 * \return 
@@ -113,6 +115,8 @@ namespace ns {
 
 	protected:
 		Renderer3dConfigInfo info_;
+
+		constexpr std::vector<Shader::Define> typeDefine() const;
 
 		//physically based rendering system
 		void draw();
@@ -141,9 +145,9 @@ namespace ns {
 		//rendering system
 		void initPhysicallyBasedRenderingSystem(const std::string& envHdrMapPath);
 		std::unique_ptr<ns::Shader> pbr_;
-		Camera& cam_;
+		Camera<P, D>& cam_;
 		Window& win_;
-		const Scene* scene_;
+		const Scene<P, D>* scene_;
 		glm::ivec2 previousResolution_;
 
 		void setDynamicUniforms(ns::Shader& shader) const;
@@ -194,7 +198,7 @@ namespace ns {
 		GLuint depthAttachement_;
 
 		void createFramebuffer();
-		SkyMapRenderer skyBox;
+		SkyMapRenderer<P, D> skyBox;
 
 		friend class Debug;
 #		ifndef NDEBUG

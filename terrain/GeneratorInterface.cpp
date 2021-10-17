@@ -18,7 +18,7 @@ std::vector<ns::MapLengthType> ns::GeneratorInterface::heightComputationPos;
 ns::GeneratorInterface::GeneratorInterface()
 	:
 	window_(1920, 1080, "noisy terrain generator v0 alpha", 2),
-	cam_(glm::vec3(9, 6, -8), -.6, 1.5, 1.8),
+	cam_(glm::vec3(9, 6, -8), glm::vec3(1, 0, 0), 1.8),
 	scene_(DirectionalLight::nullLight()),
 	renderer_(window_, cam_, scene_, Renderer3dConfigInfo()),
 	chunkSize_(ns::defaultSize),
@@ -67,7 +67,7 @@ int ns::GeneratorInterface::run()
 		cam_.classicKeyboardControls(window_, settings_.cameraSpeed);
 		cam_.classicMouseControls(window_, settings_.mouseSensivity);
 
-		scene_ = initialScene + plane_->renderer.lockScene();
+		//scene_ = initialScene + plane_->renderer.lockScene();
 
 		renderer_.startRendering();
 		renderer_.finishRendering();

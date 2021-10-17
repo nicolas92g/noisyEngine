@@ -2,10 +2,10 @@
 
 #include "Model.h"
 
-
-ns::DrawableObject3d::DrawableObject3d(Drawable& model, const glm::vec3& position, const glm::vec3& scale, const glm::vec3& axis, float angle)
+template<typename P, typename D>
+ns::DrawableObject3d<P, D>::DrawableObject3d(Drawable& model, const vec3p& position, const vec3p& scale, const vec3d& axis, float angle)
 	:
-	GeometricObject3d(position, scale, axis, angle ),
+	GeometricObject3d<P, D>(position, scale, axis, angle ),
 	model_(&model)
 {
 	const Model* ptr = dynamic_cast<const Model*>(model_);
@@ -27,22 +27,42 @@ ns::DrawableObject3d::DrawableObject3d(Drawable& model, const glm::vec3& positio
 		else if (pLight) {
 			lights_[i] = std::make_shared<PointLight>(*pLight);
 		}
-		dynamic_cast<Object3d*>(lights_[i].get())->setParent(this);
+		dynamic_cast<Object3d<P, D>*>(lights_[i].get())->setParent(this);
 	}
 }
 
-void ns::DrawableObject3d::draw(const Shader& shader) const
+template<typename P, typename D>
+void ns::DrawableObject3d<P, D>::draw(const Shader& shader) const
 {
-	shader.set("model", modelMatrix_);
+	shader.set("model", this->modelMatrix_);
 	model_->draw(shader);
 }
 
-const std::vector<std::shared_ptr<ns::LightBase_>>& ns::DrawableObject3d::getLights() const
+template<typename P, typename D>
+const std::vector<std::shared_ptr<ns::LightBase_>>& ns::DrawableObject3d<P, D>::getLights() const
 {
 	return lights_;
 }
 
-void ns::DrawableObject3d::setMesh(Drawable& mesh)
+template<typename P, typename D>
+void ns::DrawableObject3d<P, D>::setMesh(Drawable& mesh)
 {
 	model_ = &mesh;
+}
+
+template<typename P, typename D>
+void templateLinkFixerFunction_drawableObject3d_(){
+	_STL_REPORT_ERROR("the fix link function has been called");
+	ns::Drawable* dr = nullptr;
+	ns::Shader* sh = nullptr;
+	ns::DrawableObject3d<P, D> obj(*dr);
+	obj.setMesh(*dr);
+	obj.draw(*sh);
+}
+
+void LinkFixerFunction_drawableObject3d_(){
+	templateLinkFixerFunction_drawableObject3d_<float, float>();
+	templateLinkFixerFunction_drawableObject3d_<double, float>();
+	templateLinkFixerFunction_drawableObject3d_<float, double>();
+	templateLinkFixerFunction_drawableObject3d_<double, double>();
 }

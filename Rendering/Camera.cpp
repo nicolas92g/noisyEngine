@@ -3,50 +3,42 @@
 #include <Utils/yamlConverter.h>
 #include <Utils/DebugLayer.h>
 
-using namespace glm;
-
-ns::Camera::Camera(const vec3& pos, float pitch, float yaw, float fov)
+template<typename P, typename D>
+ns::Camera<P, D>::Camera(const vec3p& pos, const vec3d& direction, float fov)
 	:
-	DirectionalObject3d(pos, glm::vec3(1, 0, 0))
+	DirectionalObject3d<P, D>(pos, direction)
 {
-	pitch_ = pitch;
-	yaw_ = yaw;
 	fov_ = fov;
-	zNear_ = 0.1f;
-	zFar_ = 400.0f;
-	upDirection_ =  vec3(0,1,0);
+	zNear_ = 0.1;
+	zFar_ = 400.0;
+	upDirection_ =  vec3d(0,1,0);
 
 	//just to initalize vars
-	updateLookWithYawAndPitch();
-	calculateMatrix(10,10);
+	this->calculateMatrix(10,10);
 }
 
-void ns::Camera::calculateMatrix(Window& win)
+template<typename P, typename D>
+void ns::Camera<P, D>::calculateMatrix(Window& win)
 {
 	if (win.width() and win.height())
-		calculateMatrix((float)win.width(),(float)win.height());
+		this->calculateMatrix((P)win.width(),(P)win.height());
 }
 
-void ns::Camera::calculateMatrix(float width, float height)
+template<typename P, typename D>
+void ns::Camera<P, D>::calculateMatrix(P width, P height)
 {
 	//transform pitch and yaw into a look vector
 #	ifndef NDEBUG
-	assert(this != nullptr);// if this line create a debug breakpoint is because you try to modif a camera that does'nt exist
+	_STL_ASSERT(this != nullptr, "you tried to edit a camera that does'nt exist (maybe you forget to add a camera to the renderer ?)");
 #	endif //NDEBUG
 
 	//put all vars into 4x4 matrix transformation
-	view_ = lookAt(position_, position_ + direction_, upDirection_);
-	projection_ = perspective(fov_, width / height,zNear_, zFar_);
+	view_ = glm::lookAt<P>(this->position_, this->position_ + static_cast<glm::vec<3, P>>(this->direction_), static_cast<glm::vec<3, P>>(this->upDirection_));
+	projection_ = glm::perspective<P>((P)this->fov_, (P)width / (P)height, (P)this->zNear_, (P)this->zFar_);
 }
 
-void ns::Camera::updateLookWithYawAndPitch()
-{
-	direction_.x = cos(yaw_) * cos(pitch_);
-	direction_.y = sin(pitch_);
-	direction_.z = sin(yaw_) * cos(pitch_);
-}
-
-void ns::Camera::classicMouseControls(Window& win, double mouseSensivity)
+template<typename P, typename D>
+void ns::Camera<P, D>::classicMouseControls(Window& win, double mouseSensivity, float limitOffset)
 {
 	//disable mouse
 	static bool disableMouseKey, disableMouse;
@@ -64,193 +56,205 @@ void ns::Camera::classicMouseControls(Window& win, double mouseSensivity)
 		glm::dvec2 offset = (middle - win.getCursorPos());
 		offset.y *= -1;
 
-		//setYaw((float)yaw_ - float(mouseSensivity * offset.x));
-		//setPitch((float)pitch_ + float(mouseSensivity * offset.y));
-
 		win.setCursorPos(middle.x, middle.y);
 		win.hideCursor();
 				
-		float yAngle = offset.y * mouseSensivity;
+		D yAngle = offset.y * mouseSensivity;
 
-		if (yAngle > 0) {
-			float maxAngle = PI - acos(std::max(glm::dot(direction_, upDirection_), -1.f));
+		if (yAngle > 0.0) {
+			D maxAngle = glm::pi<D>() * (1.f - limitOffset) - acos(std::max<D>(glm::dot<3, D>(this->direction_, this->upDirection_), -1.0));
 		
 			if (yAngle > maxAngle) {
 				yAngle = maxAngle;
 			}
 		}
-		else if(yAngle < 0){
-			float maxAngle = PI - acos(std::max(glm::dot(direction_, -upDirection_), -1.f));
-
+		else if(yAngle < 0.0){
+			D maxAngle = glm::pi<D>() * (1.f - limitOffset) - acos(std::max<D>(glm::dot<3, D>(this->direction_, -this->upDirection_), -1.0));
+		
 			if (-yAngle > maxAngle) {
 				yAngle = -maxAngle;
 			}
 		}
 
-		direction_ = glm::rotate<float>(offset.x * mouseSensivity, upDirection_) * glm::vec4(direction_, 1.f);
-		direction_ = glm::rotate<float>(yAngle, rightDirection()) * glm::vec4(direction_, 1.f);
-		
-		//updateLookWithYawAndPitch();
+		this->direction_ = glm::rotate<D>(offset.x * mouseSensivity, this->upDirection_) * glm::vec<4, D>(this->direction_, 1.0);
+		this->direction_ = glm::rotate<D>(yAngle, rightDirection()) * glm::vec<4, D>(this->direction_, 1.0);
 	}
 	else {
 		win.showCursor();
 	}
 }
-void ns::Camera::classicKeyboardControls(Window& win, float speed)
+
+template<typename P, typename D>
+void ns::Camera<P, D>::classicKeyboardControls(Window& win, float speed)
 {
-	const glm::vec3 right = rightDirection();
-	const glm::vec3 forward = glm::normalize(glm::cross(right, upDirection_));
+	const vec3d right = rightDirection();
+	const vec3d forward = glm::normalize(glm::cross(right, this->upDirection_));
 	
 	if (win.key(GLFW_KEY_LEFT_SHIFT)) {
 		speed *= 2;
 	}
 	if (win.key(GLFW_KEY_W)) {
-		position_ += (float)win.deltaTime() * forward * speed;
+		this->position_ += (D)win.deltaTime() * forward * (D)speed;
 	}
 	if (win.key(GLFW_KEY_S)) {
-		position_ -= (float)win.deltaTime() * forward * speed;
+		this->position_ -= (D)win.deltaTime() * forward * (D)speed;
 	}
 	if (win.key(GLFW_KEY_A)) {
-		position_ += (float)win.deltaTime() * right * speed; 
+		this->position_ += (D)win.deltaTime() * right * (D)speed;
 	}
 	if (win.key(GLFW_KEY_D)) {
-		position_ -= (float)win.deltaTime() * right * speed;
+		this->position_ -= (D)win.deltaTime() * right * (D)speed;
 	}
 	if (win.key(GLFW_KEY_SPACE)) {
-		position_ += (float)win.deltaTime() * upDirection_ * speed;
+		this->position_ += (D)win.deltaTime() * this->upDirection_ * (D)speed;
 	}
 	if (win.key(GLFW_KEY_LEFT_CONTROL)) {
-		position_ -= (float)win.deltaTime() * upDirection_ * speed;
+		this->position_ -= (D)win.deltaTime() * this->upDirection_ * (D)speed;
 	}
 
 }
 
-bool ns::Camera::isVertexInTheFieldOfView(const glm::vec3& vertex, float offset)
+template<typename P, typename D>
+bool ns::Camera<P, D>::isVertexInTheFieldOfView(const vec3p& vertex, P offset)
 {
-	vec4 co = projection_ * view_ * vec4(vertex, 1);
-	if (co.z < -0.1f) return false;
-	vec2 screen = vec2(co.x / co.z, co.y / co.z);
+	glm::vec<4, P> co = this->projection_ * this->view_ * glm::vec<4, P>(vertex, 1);
+	if (co.z < -0.1) return false;
+	glm::vec<2, P> screen = glm::vec<2, P>(co.x / co.z, co.y / co.z);
  	return ((screen.x > (-1 - offset) and screen.x < (1 + offset)) and (screen.y > (-1 - offset) and screen.y < (1 + offset)));
 }
 
-glm::vec3 ns::Camera::rightDirection() const
+template<typename P, typename D>
+glm::vec<3, D> ns::Camera<P, D>::rightDirection() const
 {
-	return glm::normalize(glm::cross(upDirection_, direction_));
+	return glm::normalize(glm::cross(this->upDirection_, this->direction_));
 }
 
-glm::vec3 ns::Camera::upDirection() const
+template<typename P, typename D>
+glm::vec<3, D> const& ns::Camera<P, D>::upDirection() const
 {
-	return upDirection_;
+	return this->upDirection_;
 }
 
-float ns::Camera::pitch() const
+template<typename P, typename D>
+const glm::mat<4, 4, P>& ns::Camera<P, D>::projection() const
 {
-	return pitch_;
+	return this->projection_;
 }
 
-float ns::Camera::yaw() const
+template<typename P, typename D>
+const glm::mat<4, 4, P>& ns::Camera<P, D>::view() const
 {
-	return yaw_;
+	return this->view_;
 }
 
-glm::mat4 ns::Camera::projection() const
+template<typename P, typename D>
+glm::mat<4, 4, P> ns::Camera<P, D>::projectionView() const
 {
-	return projection_;
+	return this->projection_ * this->view_;
 }
 
-glm::mat4 ns::Camera::view() const
+template<typename P, typename D>
+P ns::Camera<P, D>::fov() const
 {
-	return view_;
+	return this->fov_;
 }
 
-glm::mat4 ns::Camera::projectionView() const
+template<typename P, typename D>
+P ns::Camera<P, D>::zNear() const
 {
-	return projection_ * view_;
+	return this->zNear_;
 }
 
-float ns::Camera::fov() const
+template<typename P, typename D>
+P ns::Camera<P, D>::zFar() const
 {
-	return fov_;
+	return this->zFar_;
 }
 
-float ns::Camera::zNear() const
+template<typename P, typename D>
+void ns::Camera<P, D>::setUpDirection(const vec3d& up)
 {
-	return zNear_;
-}
+	const vec3d n = glm::normalize(up);
+	if (n != this->upDirection_) {
+		if (n == -upDirection_) { 
+			this->upDirection_ = n;
+			//direction_ *= -1;//negate the camera direction when the up direction is negated
+			return;
+		};
 
-float ns::Camera::zFar() const
-{
-	return zFar_;
-}
+		const vec3d axis = glm::cross<D>(n, this->upDirection_);
+		const D angle = acos(glm::dot<3, D>(n, this->upDirection_));
 
-void ns::Camera::setUpDirection(const glm::vec3& up)
-{
-	const glm::vec3 n = glm::normalize(up);
-	if (n != upDirection_) {
-		if( n == -upDirection_) upDirection_ = n;
-
-		const vec3 axis = cross(n, upDirection_);
-		const float angle = acos(std::min(std::max(dot(n, upDirection_), -1.f), 1.f));
-
-		glm::vec3 dir = (vec4(direction_, 1.f) * rotate(angle, axis));
+		vec3d dir = (glm::vec<4, D>(this->direction_, 1.f) * glm::rotate<D>(angle, axis));
 		
-		if (!isnan(dir.x)) direction_ = dir;
+		if (!glm::isnan<D>(dir.x)) this->direction_ = dir;
 
-		upDirection_ = n;
+		this->upDirection_ = n;
 	}
 }
 
-void ns::Camera::setPitch(float pitch)
+template<typename P, typename D>
+void ns::Camera<P, D>::setProjection(const mat4p& projection)
 {
-	if (pitch > PI/2.0f) {
-		pitch_ = PI/ 2.0f;
+	this->projection_ = projection;
+}
+
+template<typename P, typename D>
+void ns::Camera<P, D>::setView(const mat4p& view)
+{
+	this->view_ = view;
+}
+
+template<typename P, typename D>
+void ns::Camera<P, D>::setFov(P fov)
+{
+	if (fov < 0.0) {
+		this->fov_ = 0.0;
 	}
-	else if (pitch < -PI / 2.0f) {
-		pitch_ = -PI / 2.0f;
+	else if (fov > glm::pi<P>()) {
+		this->fov_ = glm::pi<P>();
 	}
 	else {
-		pitch_ = pitch;
+		this->fov_ = fov;
 	}
 }
 
-void ns::Camera::setYaw(float yaw)
+template<typename P, typename D>
+void ns::Camera<P, D>::setZNear(P zNear)
 {
-	yaw_ = yaw;
-}
-
-void ns::Camera::setProjection(const glm::mat4& projection)
-{
-	projection_ = projection;
-}
-
-void ns::Camera::setView(const glm::mat4& view)
-{
-	view_ = view;
-}
-
-void ns::Camera::setFov(float fov)
-{
-	if (fov < 0.0f) {
-		fov_ = 0;
-	}
-	else if (fov > 180.0f) {
-		fov_ = 180.0f;
-	}
-	else {
-		fov_ = fov;
+	if (zNear > 0.0) {
+		this->zNear_ = zNear;
 	}
 }
 
-void ns::Camera::setZNear(float zNear)
+template<typename P, typename D>
+void ns::Camera<P, D>::setZFar(P zFar)
 {
-	if (zNear > 0.0f) {
-		zNear_ = zNear;
+	if (zFar > 0.0) {
+		this->zFar_ = zFar;
 	}
 }
 
-void ns::Camera::setZFar(float zFar)
-{
-	if (zFar > 0.0f) {
-		zFar_ = zFar;
-	}
+template<typename P, typename D>
+void templateFixLinkFunction_Camera_(){
+	_STL_REPORT_ERROR("called a template fix link function !");
+	using namespace ns;
+	Window* win = nullptr;
+	Camera<P, D> cam;
+	cam.classicKeyboardControls(*win, .0);
+	cam.classicMouseControls(*win, .0);
+	cam.setUpDirection(glm::vec3(0));
+	cam.setZFar(0);
+	cam.upDirection();
+	cam.projectionView();
+	cam.calculateMatrix(*win);
+	cam.projection();
+	cam.view();
+}
+
+void FixLinkFunction_Camera_(){
+	templateFixLinkFunction_Camera_<float, float>();
+	templateFixLinkFunction_Camera_<double, float>();
+	templateFixLinkFunction_Camera_<float, double>();
+	templateFixLinkFunction_Camera_<double, double>();
 }

@@ -5,11 +5,26 @@
 #define MAX_POINT_LIGHTS 50
 #define MAX_SPOT_LIGHTS 50
 
+#define DOUBLE 1
+#if (DOUBLE)
+#define MAT4P dmat4
+#define MAT3P dmat3
+#define VEC2P dvec2
+#define VEC3P dvec3
+#define VEC4P dvec4
+#else
+#define MAT4P mat4
+#define MAT3P mat3
+#define VEC2P vec2
+#define VEC3P vec3
+#define VEC4P vec4
+#endif
+
 layout(location = 0) out vec4 outColor;
 
 in vec2 uv;
 in vec3 outNormal;
-in vec3 fragPos;
+flat in VEC3P fragPos;
 in mat3 TBN;
 in vec4 lightFragPos;
 
@@ -76,7 +91,7 @@ struct PixelMaterial{
     float alpha;
 };
 
-uniform vec3 camPos;
+uniform VEC3P camPos;
 
 uniform samplerCube irradianceMap;
 uniform samplerCube prefilteredEnvironmentMap;
@@ -103,8 +118,8 @@ void main(){
     pbr.alpha = 1;
 
 	//fragment to eye of the camera vector
-    vec3 V = normalize(camPos - fragPos);
-    vec3 R = reflect(-V, pbr.normal);
+    VEC3P V = normalize(camPos - fragPos);
+    vec3 R = reflect(-vec3(V), pbr.normal);
 
 	//surface reflection at zero incidence
     vec3 F0 = vec3(0.04); 
@@ -113,19 +128,19 @@ void main(){
 	vec3 Lo = vec3(0);
 
     for(int i = 0; i < dirLightNumber; ++i){
-        Lo += CalcDirLight(dirLights[i], F0, V, vec4(1), pbr);
+        Lo += CalcDirLight(dirLights[i], F0, vec3(V), vec4(1), pbr);
     }
     
     for(int i = 0; i < pointLightNumber; ++i){
-        Lo += CalcPointLight(pointLights[i], F0, fragPos, V, pbr);
+        Lo += CalcPointLight(pointLights[i], F0, vec3(fragPos), vec3(V), pbr);
     }
     
     for(int i = 0; i < spotLightNumber; ++i){
-        Lo += CalcSpotLight(spotLights[i], F0, fragPos, V, pbr);
+        Lo += CalcSpotLight(spotLights[i], F0, vec3(fragPos), vec3(V), pbr);
     }
     
 
-	vec3 F = fresnelSchlickRoughness(max(dot(pbr.normal, V), 0), F0, pbr.roughness);
+	vec3 F = fresnelSchlickRoughness(max(dot(pbr.normal, vec3(V)), 0), F0, pbr.roughness);
     
     vec3 kS = F;
     vec3 kD = 1.0 - kS;

@@ -16,7 +16,8 @@
 #define NS_BRDF_LUT_MAP							30
 #define NS_SHADOW_MAP_SAMPLER					31
 
-ns::Renderer3d::Renderer3d(Window& window, Camera& camera, Scene& scene, const Renderer3dConfigInfo& info)
+template<typename P, typename D>
+ns::Renderer3d<P, D>::Renderer3d(Window& window, Camera<P, D>& camera, Scene<P, D>& scene, const Renderer3dConfigInfo& info)
 	:
 	cam_(camera),
 	win_(window),
@@ -29,8 +30,10 @@ ns::Renderer3d::Renderer3d(Window& window, Camera& camera, Scene& scene, const R
 	std::vector<ns::Shader::Define> defines{
 		{"MAX_DIR_LIGHTS", std::to_string(info_.directionalLightsMax), ns::Shader::Stage::Fragment},
 		{"MAX_POINT_LIGHTS", std::to_string(info_.pointLightsMax), ns::Shader::Stage::Fragment},
-		{"MAX_SPOT_LIGHTS", std::to_string(info_.spotLightsMax), ns::Shader::Stage::Fragment},
+		{"MAX_SPOT_LIGHTS", std::to_string(info_.spotLightsMax), ns::Shader::Stage::Fragment}
 	};
+	std::vector<ns::Shader::Define> typeD = typeDefine();
+	defines.insert(defines.end(), typeD.begin(), typeD.end());
 	pbr_ = std::make_unique<ns::Shader>(NS_PATH"assets/shaders/main/renderer.vert", NS_PATH"assets/shaders/main/renderer.frag", nullptr, defines, true);
 
 #	ifndef NDEBUG
@@ -57,7 +60,8 @@ ns::Renderer3d::Renderer3d(Window& window, Camera& camera, Scene& scene, const R
 	importFromYAML();
 }
 
-ns::Renderer3d::~Renderer3d()
+template<typename P, typename D>
+ns::Renderer3d<P, D>::~Renderer3d()
 {
 
 	destroyBloomPipeline();
@@ -72,7 +76,8 @@ ns::Renderer3d::~Renderer3d()
 	glDeleteTextures(1, &shadowMap_);
 }
 
-void ns::Renderer3d::startRendering()
+template<typename P, typename D>
+void ns::Renderer3d<P, D>::startRendering()
 {
 	//enable depth testing
 	glEnable(GL_DEPTH_TEST);
@@ -114,7 +119,8 @@ void ns::Renderer3d::startRendering()
 	
 }
 
-void ns::Renderer3d::finishRendering()
+template<typename P, typename D>
+void ns::Renderer3d<P, D>::finishRendering()
 {
 	//BLOOM
 	if (previousBloomIterationSetting_ != info_.bloomIteration) {
@@ -264,7 +270,35 @@ void ns::Renderer3d::finishRendering()
 	glBindVertexArray(0);
 }
 
-void ns::Renderer3d::draw()
+template<typename P, typename D>
+constexpr std::vector<ns::Shader::Define> ns::Renderer3d<P, D>::typeDefine() const
+{
+	static_assert(false, "type not supported by ns::Renderer<>");
+}
+
+template<>
+constexpr std::vector<ns::Shader::Define> ns::Renderer3d<float, float>::typeDefine() const
+{
+	return std::vector<ns::Shader::Define>{ {"DOUBLE", "0", Shader::Stage::Vertex}, { "DOUBLE", "0", Shader::Stage::Fragment } };
+}
+template<>
+constexpr std::vector<ns::Shader::Define> ns::Renderer3d<double, float>::typeDefine() const
+{
+	return std::vector<ns::Shader::Define>{ {"DOUBLE", "1", Shader::Stage::Vertex}, { "DOUBLE", "1", Shader::Stage::Fragment } };
+}
+template<>
+constexpr std::vector<ns::Shader::Define> ns::Renderer3d<float, double>::typeDefine() const
+{
+	return std::vector<ns::Shader::Define>{ {"DOUBLE", "0", Shader::Stage::Vertex}, { "DOUBLE", "0", Shader::Stage::Fragment } };
+}
+template<>
+constexpr std::vector<ns::Shader::Define> ns::Renderer3d<double, double>::typeDefine() const
+{
+	return std::vector<ns::Shader::Define>{ {"DOUBLE", "1", Shader::Stage::Vertex}, { "DOUBLE", "1", Shader::Stage::Fragment } };
+}
+
+template<typename P, typename D>
+void ns::Renderer3d<P, D>::draw()
 {
 	cam_.calculateMatrix(win_);
 	
@@ -287,22 +321,26 @@ void ns::Renderer3d::draw()
 #	endif // !NDEBUG
 }
 
-void ns::Renderer3d::setCamera(Camera& camera)
+template<typename P, typename D>
+void ns::Renderer3d<P, D>::setCamera(Camera<P, D>& camera)
 {
 	cam_ = camera;
 }
 
-void ns::Renderer3d::setScene(Scene& scene)
+template<typename P, typename D>
+void ns::Renderer3d<P, D>::setScene(Scene<P, D>& scene)
 {
 	scene_ = &scene;
 }
 
-ns::Renderer3dConfigInfo& ns::Renderer3d::settings()
+template<typename P, typename D>
+ns::Renderer3dConfigInfo& ns::Renderer3d<P, D>::settings()
 {
 	return info_;
 }
 
-void ns::Renderer3d::importFromYAML()
+template<typename P, typename D>
+void ns::Renderer3d<P, D>::importFromYAML()
 {
 	try {
 		auto clear = conf["renderer"]["clearColor"].as<glm::vec4>();
@@ -322,7 +360,8 @@ void ns::Renderer3d::importFromYAML()
 	catch(...){}
 }
 
-void ns::Renderer3d::exportIntoYAML()
+template<typename P, typename D>
+void ns::Renderer3d<P, D>::exportIntoYAML()
 {
 	conf["renderer"]["clearColor"] = ns::getClearColor();
 	conf["renderer"]["bloomIteration"] = info_.bloomIteration;
@@ -337,7 +376,8 @@ void ns::Renderer3d::exportIntoYAML()
 	conf["renderer"]["ambientIntensity"] = info_.ambientIntensity;
 }
 
-void ns::Renderer3d::initPhysicallyBasedRenderingSystem(const std::string& envHdrMapPath)
+template<typename P, typename D>
+void ns::Renderer3d<P, D>::initPhysicallyBasedRenderingSystem(const std::string& envHdrMapPath)
 {
 	createCube();
 	createPlaneMesh();
@@ -369,7 +409,8 @@ void ns::Renderer3d::initPhysicallyBasedRenderingSystem(const std::string& envHd
 	createFramebuffer();
 }
 
-void ns::Renderer3d::setDynamicUniforms(ns::Shader& shader) const
+template<typename P, typename D>
+void ns::Renderer3d<P, D>::setDynamicUniforms(ns::Shader& shader) const
 {
 #	ifdef RUNTIME_SHADER_RECOMPILATION
 	sendFixDataToShader();
@@ -389,7 +430,7 @@ void ns::Renderer3d::setDynamicUniforms(ns::Shader& shader) const
 	else glBindTexture(GL_TEXTURE_2D, 0);
 
 	shader.set("projView", cam_.projectionView());
-	shader.set("model", glm::scale(glm::vec3(1)));
+	shader.set("model", glm::scale(glm::vec<3, P>(1)));
 	shader.set("camPos", cam_.position());
 
 	shader.set<int>("dirLightNumber", DirectionalLight::number());
@@ -401,7 +442,8 @@ void ns::Renderer3d::setDynamicUniforms(ns::Shader& shader) const
 	shader.set("ambientIntensity", info_.ambientIntensity);
 }
 
-void ns::Renderer3d::initShadowPipeline()
+template<typename P, typename D>
+void ns::Renderer3d<P, D>::initShadowPipeline()
 {
 	//this store the resolution of the depth buffer(two vars are needed to store the resolution needed and the actual resolution)
 	shadowMapRes_ = info_.shadowPrecision;
@@ -433,7 +475,8 @@ void ns::Renderer3d::initShadowPipeline()
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void ns::Renderer3d::updateDynamicShadow(const glm::vec3& position, const glm::vec3& lightDir)
+template<typename P, typename D>
+void ns::Renderer3d<P, D>::updateDynamicShadow(const glm::vec3& position, const glm::vec3& lightDir)
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, shadowFramebuffer_);
 	glViewport(0, 0, shadowMapRes_, shadowMapRes_);
@@ -453,7 +496,8 @@ void ns::Renderer3d::updateDynamicShadow(const glm::vec3& position, const glm::v
 	glCullFace(GL_BACK);
 }
 
-void ns::Renderer3d::initBloomPipeline()
+template<typename P, typename D>
+void ns::Renderer3d<P, D>::initBloomPipeline()
 {
 	destroyBloomPipeline();
 	glGenTextures(1, &bloomThresholdFiltered_.id);
@@ -509,7 +553,8 @@ void ns::Renderer3d::initBloomPipeline()
 	previousBloomIterationSetting_ = info_.bloomIteration;
 }
 
-void ns::Renderer3d::resizeBloomPipeline()
+template<typename P, typename D>
+void ns::Renderer3d<P, D>::resizeBloomPipeline()
 {
 	glm::ivec2 resolution = win_.size();
 
@@ -560,7 +605,8 @@ void ns::Renderer3d::resizeBloomPipeline()
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, win_.width(), win_.height(), 0, GL_RGBA, GL_FLOAT, NULL);
 }
 
-void ns::Renderer3d::destroyBloomPipeline()
+template<typename P, typename D>
+void ns::Renderer3d<P, D>::destroyBloomPipeline()
 {
 	//delete pre filtering texture
 	glDeleteTextures(1, &bloomThresholdFiltered_.id);
@@ -583,7 +629,8 @@ void ns::Renderer3d::destroyBloomPipeline()
 	glDeleteTextures(1, &result_);
 }
 
-void ns::Renderer3d::createFramebuffer()
+template<typename P, typename D>
+void ns::Renderer3d<P, D>::createFramebuffer()
 {
 	//create layer framebuffer
 	glGenFramebuffers(1, &framebuffer_);
@@ -627,7 +674,8 @@ void ns::Renderer3d::createFramebuffer()
 	}
 }
 
-void ns::Renderer3d::loadEnvironmentMap(const char* path, int res)
+template<typename P, typename D>
+void ns::Renderer3d<P, D>::loadEnvironmentMap(const char* path, int res)
 {
 	ns::Shader equiRectToCubeMap(NS_PATH"assets/shaders/pbr/equirectangularToCubemap.vert", NS_PATH"assets/shaders/pbr/equirectangularToCubemap.frag");
 
@@ -723,7 +771,8 @@ void ns::Renderer3d::loadEnvironmentMap(const char* path, int res)
 	
 }
 
-void ns::Renderer3d::updateIrradianceMap()
+template<typename P, typename D>
+void ns::Renderer3d<P, D>::updateIrradianceMap()
 {
 	ns::Shader irradiance(NS_PATH"assets/shaders/pbr/irradianceMap.vert", NS_PATH"assets/shaders/pbr/irradianceMap.frag");
 
@@ -795,7 +844,8 @@ void ns::Renderer3d::updateIrradianceMap()
 	glDeleteRenderbuffers(1, &captureRBO);
 }
 
-void ns::Renderer3d::updatePreFilteredEnvironmentMap()
+template<typename P, typename D>
+void ns::Renderer3d<P, D>::updatePreFilteredEnvironmentMap()
 {
 	ns::Shader prefilter(NS_PATH"assets/shaders/pbr/preFilter.vert", NS_PATH"assets/shaders/pbr/preFilter.frag");
 	constexpr int TEX_RES = 256;
@@ -871,7 +921,8 @@ void ns::Renderer3d::updatePreFilteredEnvironmentMap()
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void ns::Renderer3d::sendFixDataToShader() const
+template<typename P, typename D>
+void ns::Renderer3d<P, D>::sendFixDataToShader() const
 {
 	pbr_->set("irradianceMap", NS_IRRADIANCE_MAP_SAMPLER);
 	pbr_->set("prefilteredEnvironmentMap", NS_PREFILTERED_ENVIRONMENT_MAP_SAMPLER);
@@ -879,7 +930,8 @@ void ns::Renderer3d::sendFixDataToShader() const
 	pbr_->set("shadowMap", NS_SHADOW_MAP_SAMPLER);
 }
 
-void ns::Renderer3d::updateBRDFpreComputing()
+template<typename P, typename D>
+void ns::Renderer3d<P, D>::updateBRDFpreComputing()
 {
 	ns::Shader brdf(NS_PATH"assets/shaders/pbr/brdf.vert", NS_PATH"assets/shaders/pbr/brdf.frag");
 
@@ -928,7 +980,8 @@ void ns::Renderer3d::updateBRDFpreComputing()
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void ns::Renderer3d::createCube()
+template<typename P, typename D>
+void ns::Renderer3d<P, D>::createCube()
 {
 	std::vector<float> vertices = {
 		-1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f,
@@ -990,7 +1043,8 @@ void ns::Renderer3d::createCube()
 	glBindVertexArray(0);
 }
 
-void ns::Renderer3d::createPlaneMesh()
+template<typename P, typename D>
+void ns::Renderer3d<P, D>::createPlaneMesh()
 {
 	std::vector<float> vert = {
 		// positions			// texture Coords
@@ -1015,4 +1069,22 @@ void ns::Renderer3d::createPlaneMesh()
 	glVertexAttribPointer(2, 2, GL_FLOAT, false, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 
 	glBindVertexArray(0);
+}
+
+template<typename P, typename D>
+void templateLinkFixFunction_Renderer3d_(){
+	using namespace ns;
+	Window* w = 0;
+	Camera<P, D>* c = 0;
+	Scene<P, D>* s = 0;
+	Renderer3d<P, D> r(*w, *c, *s);
+	r.startRendering();
+	r.finishRendering();
+}
+
+void LinkFixFunction_Renderer3d_(){
+	templateLinkFixFunction_Renderer3d_<float, float>();
+	templateLinkFixFunction_Renderer3d_<double, float>();
+	templateLinkFixFunction_Renderer3d_<float, double>();
+	templateLinkFixFunction_Renderer3d_<double, double>();
 }

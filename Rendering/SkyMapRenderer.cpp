@@ -5,7 +5,8 @@
 
 #include <configNoisy.hpp>
 
-ns::SkyMapRenderer::SkyMapRenderer(Camera& cam, unsigned cubeMapTexture)
+template<typename P, typename D>
+ns::SkyMapRenderer<P, D>::SkyMapRenderer(Camera<P, D>& cam, unsigned cubeMapTexture)
     :
     cam_(cam),
     shader_(NS_PATH"assets/shaders/main/skyBox.vert", NS_PATH"assets/shaders/main/skyBox.frag"),
@@ -72,23 +73,26 @@ ns::SkyMapRenderer::SkyMapRenderer(Camera& cam, unsigned cubeMapTexture)
     shader_.set("rotation", glm::rotate(0.0f, glm::vec3(0, 1, 0)));
 }
 
-ns::SkyMapRenderer::~SkyMapRenderer()
+template<typename P, typename D>
+ns::SkyMapRenderer<P, D>::~SkyMapRenderer()
 {
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
 }
 
-void ns::SkyMapRenderer::setCubeMapTexture(unsigned tex)
+template<typename P, typename D>
+void ns::SkyMapRenderer<P, D>::setCubeMapTexture(unsigned tex)
 {
     cubeMapTexture_ = tex;
 }
 
-void ns::SkyMapRenderer::draw() const
+template<typename P, typename D>
+void ns::SkyMapRenderer<P, D>::draw() const
 {
     glDepthFunc(GL_ALWAYS);
 
 	shader_.set("hdr", true);
-	shader_.set("view", glm::mat4(glm::mat3(cam_.view())));
+	shader_.set("view", glm::mat<4, 4, P>(glm::mat<3, 3, P>(cam_.view())));
 	shader_.set("projection", cam_.projection());
 
 	glActiveTexture(GL_TEXTURE0);
@@ -103,4 +107,21 @@ void ns::SkyMapRenderer::draw() const
 
 	if (cull)
 		glEnable(GL_CULL_FACE);
+}
+
+template<typename P, typename D>
+void templateLinkFixFunction_SkyMapRenderer_(){
+    _STL_REPORT_ERROR("");
+    using namespace ns;
+    Camera<P, D>* c = 0;
+    SkyMapRenderer<P, D> r(*c, 0);
+    r.setCubeMapTexture(0);
+    r.draw();
+}
+
+void LinkFixFunction_SkyMapRenderer_(){
+    templateLinkFixFunction_SkyMapRenderer_<float, float>();
+    templateLinkFixFunction_SkyMapRenderer_<float, double>();
+    templateLinkFixFunction_SkyMapRenderer_<double, float>();
+    templateLinkFixFunction_SkyMapRenderer_<double, double>();
 }

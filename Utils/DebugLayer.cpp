@@ -104,7 +104,7 @@ ns::Debug::Debug()
 	maxTextureSize_(1024)
 {}
 
-void ns::Debug::setCamera(Camera& cam)
+void ns::Debug::setCamera(Camera<>& cam)
 {
 	debugObject.cam_ = &cam;
 }
@@ -114,22 +114,22 @@ void ns::Debug::setWindow(Window& win)
 	debugObject.win_ = &win;
 }
 
-void ns::Debug::setRenderer3d(Renderer3d& renderer)
+void ns::Debug::setRenderer3d(Renderer3d<>& renderer)
 {
 	debugObject.renderer_ = &renderer;
 }
 
-void ns::Debug::setScenes(const std::vector<ns::Scene*>& scenes)
+void ns::Debug::setScenes(const std::vector<ns::Scene<>*>& scenes)
 {
 	scenes_ = scenes;
 }
 
-void ns::Debug::addScene(Scene& scene)
+void ns::Debug::addScene(Scene<>& scene)
 {
 	scenes_.push_back(&scene);
 }
 
-void ns::Debug::removeScene(Scene& scene)
+void ns::Debug::removeScene(Scene<>& scene)
 {
 	for (auto it = scenes_.begin(); it != scenes_.end(); ++it) {
 		if (*it == &scene) {
@@ -229,32 +229,6 @@ void ns::Debug::cameraMenu()
 	if (CollapsingHeader("camera")) {
 
 		inputDirectionalObject3d(*cam_);
-		
-
-		
-		float y = cam_->yaw();
-
-		while (y > PI)
-			y -= 2 * PI;
-		while (y < -PI)
-			y += 2 * PI;
-
-		cam_->setYaw(y);
-
-		Text("yaw :   "); SameLine();
-		SliderFloat("##yaw", &y, -PI, PI);
-		bool wasEdited = y != cam_->yaw();
-		
-		float p = cam_->pitch();
-		Text("pitch : "); SameLine();
-		SliderFloat("##pitch", &p, -PI * .5f, PI * .5f);
-		if (p != cam_->pitch()) wasEdited = true;
-		
-		if (wasEdited) {
-			cam_->setPitch(p);
-			cam_->setYaw(y);
-			cam_->updateLookWithYawAndPitch();
-		}
 
 		Text("fov");
 		SameLine();
@@ -363,7 +337,7 @@ void ns::Debug::scenesMenu()
 
 				if (TreeNode(("entities ##" + index).c_str())) {
 					
-					for (DrawableObject3d* obj : scenes_[i]->entities_)
+					for (DrawableObject3d<>* obj : scenes_[i]->entities_)
 					{
 						Separator();
 						if (TreeNode(obj->name().c_str())) {
@@ -518,7 +492,7 @@ const char* ns::Debug::createNewFreeId()
 	return buf;
 }
 
-void ns::Debug::inputObject3d(Object3d& obj)
+void ns::Debug::inputObject3d(Object3d<>& obj)
 {
 #ifdef USE_IMGUI 
 	ImGui::Text("position : ");
@@ -527,7 +501,7 @@ void ns::Debug::inputObject3d(Object3d& obj)
 #endif
 }
 
-void ns::Debug::inputDirectionalObject3d(DirectionalObject3d& obj)
+void ns::Debug::inputDirectionalObject3d(DirectionalObject3d<>& obj)
 {
 #ifdef USE_IMGUI 
 	inputObject3d(obj);
@@ -538,7 +512,7 @@ void ns::Debug::inputDirectionalObject3d(DirectionalObject3d& obj)
 #endif
 }
 
-void ns::Debug::inputGeometricObject3d(GeometricObject3d& obj)
+void ns::Debug::inputGeometricObject3d(GeometricObject3d<>& obj)
 {
 #ifdef USE_IMGUI 
 	inputObject3d(obj);
@@ -555,7 +529,7 @@ void ns::Debug::inputGeometricObject3d(GeometricObject3d& obj)
 #endif
 }
 
-void ns::Debug::inputDrawableObject3d(DrawableObject3d& obj)
+void ns::Debug::inputDrawableObject3d(DrawableObject3d<>& obj)
 {
 #ifdef USE_IMGUI 
 	inputGeometricObject3d(obj);

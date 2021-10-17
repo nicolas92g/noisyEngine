@@ -1,9 +1,10 @@
 #include "Scene.h"
 
-ns::Scene::Scene(
+template<typename P, typename D>
+ns::Scene<P,D>::Scene(
 	DirectionalLight& dirLight,
-	const std::vector<DrawableObject3d*>& entities,
-	const std::vector<DrawableObject3d*>& statics,
+	const std::vector<DrawableObject3d<P, D>*>& entities,
+	const std::vector<DrawableObject3d<P, D>*>& statics,
 	const std::vector<attenuatedLightBase_*>& lights)
 	:
 	entities_(entities),
@@ -14,32 +15,38 @@ ns::Scene::Scene(
 	updateStatics();
 }
 
-ns::Scene::Scene(const Scene& other)
+template<typename P, typename D>
+ns::Scene<P, D>::Scene(const Scene<P, D>& other)
 {
 	*this = other;
 }
 
-ns::Scene::Scene(Scene&& other) noexcept
+template<typename P, typename D>
+ns::Scene<P, D>::Scene(Scene<P, D>&& other) noexcept
 {
 	*this = other;
 }
 
-uint32_t ns::Scene::numEntities()
+template<typename P, typename D>
+uint32_t ns::Scene<P, D>::numEntities()
 {
 	return static_cast<uint32_t>(entities_.size());
 }
 
-uint32_t ns::Scene::numStatics()
+template<typename P, typename D>
+uint32_t ns::Scene<P, D>::numStatics()
 {
 	return static_cast<uint32_t>(statics_.size());
 }
 
-uint32_t ns::Scene::numLights()
+template<typename P, typename D>
+uint32_t ns::Scene<P, D>::numLights()
 {
 	return static_cast<uint32_t>(lights_.size());
 }
 
-void ns::Scene::sendLights(const ns::Shader& shader) const
+template<typename P, typename D>
+void ns::Scene<P, D>::sendLights(const ns::Shader& shader) const
 {
 	clearLights();
 	for (attenuatedLightBase_* light : lights_)
@@ -50,82 +57,94 @@ void ns::Scene::sendLights(const ns::Shader& shader) const
 	dirLight_->send(shader);
 }
 
-void ns::Scene::draw(const ns::Shader& shader) const
+template<typename P, typename D>
+void ns::Scene<P, D>::draw(const ns::Shader& shader) const
 {
 	glDepthFunc(GL_LESS);
 
 	//draw motionless Objects
-	for (const DrawableObject3d* staticObject : statics_)
+	for (const DrawableObject3d<P, D>* staticObject : statics_)
 	{
 		staticObject->draw(shader);
 	}
 
 	//draw entities
-	for (const DrawableObject3d* entity : entities_)
+	for (const DrawableObject3d<P, D>* entity : entities_)
 	{
 		entity->draw(shader);
 	}
 }
 
-void ns::Scene::update()
+template<typename P, typename D>
+void ns::Scene<P, D>::update()
 {
 	//update entities
-	for (DrawableObject3d* entity : entities_)
+	for (DrawableObject3d<P, D>* entity : entities_)
 	{
 		entity->update();
 	}
 }
 
-void ns::Scene::updateStatics()
+template<typename P, typename D>
+void ns::Scene<P, D>::updateStatics()
 {
 	//update motionless Objects
-	for (DrawableObject3d* staticObject : statics_)
+	for (DrawableObject3d<P, D>* staticObject : statics_)
 	{
 		staticObject->update();
 	}
 }
 
-void ns::Scene::addEntity(DrawableObject3d& object)
+template<typename P, typename D>
+void ns::Scene<P, D>::addEntity(DrawableObject3d<P, D>& object)
 {
 	addElement(&object, entities_);
 }
 
-void ns::Scene::removeEntity(DrawableObject3d& object)
+template<typename P, typename D>
+void ns::Scene<P, D>::removeEntity(DrawableObject3d<P, D>& object)
 {
 	removeElement(&object, entities_);
 }
 
-void ns::Scene::clearEntities()
+template<typename P, typename D>
+void ns::Scene<P, D>::clearEntities()
 {
 	entities_.clear();
 }
 
-void ns::Scene::addStatic(DrawableObject3d& object)
+template<typename P, typename D>
+void ns::Scene<P, D>::addStatic(DrawableObject3d<P, D>& object)
 {
 	addElement(&object, statics_);
 }
 
-void ns::Scene::removeStatic(DrawableObject3d& object)
+template<typename P, typename D>
+void ns::Scene<P, D>::removeStatic(DrawableObject3d<P, D>& object)
 {
 	removeElement(&object, statics_);
 }
 
-void ns::Scene::clearStatics()
+template<typename P, typename D>
+void ns::Scene<P, D>::clearStatics()
 {
 	statics_.clear();
 }
 
-void ns::Scene::addLight(attenuatedLightBase_& light)
+template<typename P, typename D>
+void ns::Scene<P, D>::addLight(attenuatedLightBase_& light)
 {
 	addElement(&light, lights_);
 }
 
-void ns::Scene::removeLight(attenuatedLightBase_& light)
+template<typename P, typename D>
+void ns::Scene<P, D>::removeLight(attenuatedLightBase_& light)
 {
 	removeElement(&light, lights_);
 }
 
-void ns::Scene::addLights(const std::vector<std::shared_ptr<attenuatedLightBase_>>& lights)
+template<typename P, typename D>
+void ns::Scene<P, D>::addLights(const std::vector<std::shared_ptr<attenuatedLightBase_>>& lights)
 {
 	const size_t size = lights_.size();
 	lights_.resize(size + lights.size());
@@ -137,22 +156,26 @@ void ns::Scene::addLights(const std::vector<std::shared_ptr<attenuatedLightBase_
 	}
 }
 
-void ns::Scene::setDirectionalLight(DirectionalLight& dirLight)
+template<typename P, typename D>
+void ns::Scene<P, D>::setDirectionalLight(DirectionalLight& dirLight)
 {
 	dirLight_ = &dirLight;
 }
 
-ns::DirectionalLight& ns::Scene::directionalLight()
+template<typename P, typename D>
+ns::DirectionalLight& ns::Scene<P, D>::directionalLight()
 {
 	return *dirLight_;
 }
 
-const ns::DirectionalLight& ns::Scene::getDirectionalLight() const
+template<typename P, typename D>
+const ns::DirectionalLight& ns::Scene<P, D>::getDirectionalLight() const
 {
 	return *dirLight_;
 }
 
-void ns::Scene::operator+=(const Scene& other)
+template<typename P, typename D>
+void ns::Scene<P, D>::operator+=(const Scene<P, D>& other)
 {
 	if(other.entities_.size())
 		entities_.insert(entities_.end(), other.entities_.begin(), other.entities_.end());
@@ -164,7 +187,8 @@ void ns::Scene::operator+=(const Scene& other)
 		lights_.insert(lights_.end(), other.lights_.begin(), other.lights_.end());
 }
 
-void ns::Scene::operator=(const Scene& other)
+template<typename P, typename D>
+void ns::Scene<P, D>::operator=(const Scene<P, D>& other)
 {
 	entities_ = other.entities_;
 	statics_ = other.statics_;
@@ -172,7 +196,8 @@ void ns::Scene::operator=(const Scene& other)
 	dirLight_ = other.dirLight_;
 }
 
-void ns::Scene::operator=(Scene&& other) noexcept
+template<typename P, typename D>
+void ns::Scene<P, D>::operator=(Scene<P, D>&& other) noexcept
 {
 	entities_ = std::move(other.entities_);
 	statics_ = std::move(other.statics_);
@@ -180,8 +205,43 @@ void ns::Scene::operator=(Scene&& other) noexcept
 	dirLight_ = other.dirLight_;
 }
 
-ns::Scene ns::operator+(Scene scene, const Scene& other)
+template<typename P, typename D>
+template<typename T>
+void ns::Scene<P, D>::addElement(T* element, std::vector<T*>& arr)
 {
-	scene += other;
-	return scene;
+	for (const T* obj : arr) if (obj == element) return;
+	arr.push_back(element);
+}
+
+
+template<typename P, typename D>
+template<typename T>
+void ns::Scene<P, D>::removeElement(T* element, std::vector<T*>& arr)
+{
+	for (auto it = arr.begin(); it != arr.end(); ++it)
+		if (*it == element) arr.erase(it);
+}
+
+template<typename P, typename D>
+void templateFixLinkFunction_Scene_(){
+	_STL_REPORT_ERROR("the fix link function has been called !");
+	using namespace ns;
+	DrawableObject3d<P, D>* d = nullptr;
+	Shader* s = nullptr;
+	Scene<P, D> scene(*new DirectionalLight());
+	Scene<P, D> scene2(scene);
+	scene.update();
+	scene.addEntity(*d);
+	scene.addStatic(*d);
+	scene.sendLights(*s);
+	scene.draw(*s);
+	scene.getDirectionalLight();
+
+}
+
+void FixLinkFunction_Scene_() {
+	templateFixLinkFunction_Scene_<float, float>();
+	templateFixLinkFunction_Scene_<double, float>();
+	templateFixLinkFunction_Scene_<float, double>();
+	templateFixLinkFunction_Scene_<double, double>();
 }

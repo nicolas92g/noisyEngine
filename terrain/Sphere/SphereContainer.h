@@ -11,88 +11,79 @@
 #include <array>
 
 namespace ns::Sphere {
-	class SphereContainer
+	class SphereContainer : public Drawable
 	{
 	public:
+		/**
+		 * @brief create the sphere container
+		 * \param resolution
+		 * \param sphereRadius
+		 */
 		SphereContainer(uint32_t resolution, float sphereRadius);
-
+		/**
+		 * @brief return the progression of the sphere creation
+		 * \return 
+		 */
 		double sphereProgressionPercentage() const;
+		/**
+		 * @brief return a mesh that render the chunk grid of the sphere 
+		 * \return 
+		 */
 		std::shared_ptr<Mesh> getDebugSphere() const;
 		/**
 		 * @brief input a position relative to the sphere and normalized
 		 * \param normalizedVector
-		 * \return 
+		 * \return
 		 */
 		std::shared_ptr<SphereChunk> findChunk(const glm::vec3& normalizedVector);
+		/**
+		 * @brief return the radius of the sphere
+		 * \return 
+		 */
+		float radius() const;
 
-		std::shared_ptr<Mesh> test(const glm::vec3& position) {
-			std::vector<ns::Vertex> vert;
-			std::vector<unsigned> ind;
-			std::vector<uint8_t> faces;
+		void update(const glm::vec3& direction);
 
-			if (position.z <= position.x and position.z <= position.y and position.z < 0) faces.push_back(0);
-			if (position.x >= position.y and position.x >= position.z and position.x > 0) faces.push_back(1);
-			if (position.z >= position.x and position.z >= position.y and position.z > 0) faces.push_back(2);
-			if (position.x <= position.y and position.x <= position.z and position.x < 0) faces.push_back(3);
-			if (position.y >= position.x and position.y >= position.z and position.y > 0) faces.push_back(4);
-			if (position.y <= position.x and position.y <= position.z and position.y < 0) faces.push_back(5);
-
-			for (uint8_t f = 0; f < faces.size(); f++)
+		void DEBUG_showOrigin() {
+			
+			for (size_t i = 1; i < NUMBER_OF_FACES_IN_A_CUBE + 1; i++)
 			{
-				const auto face = faces[f];
-				const auto& region = findRegion(subRegions[face], position);
-				//dout << "founded region : \n";
-				//logRegion(region);
-				
-				for (uint32_t i = region.firstChunkIndex.x; i < static_cast<uint32_t>(region.lastChunkIndex.x + 1); i++)
+				for (size_t x = 0; x < i; x++)
 				{
-					for (uint32_t j = region.firstChunkIndex.y; j < static_cast<uint32_t>(region.lastChunkIndex.y + 1); j++)
-					{
-						if (checkCoordIsInLimit(position, terrain_[face].value(i, j).limit)) {
-							const auto& coo = terrain_[face].value(i, j).coords;
-				
-							vert.emplace_back(vertex(coo.a).position);
-							vert.emplace_back(vertex(coo.b).position);
-							vert.emplace_back(vertex(coo.c).position);
-							vert.emplace_back(vertex(coo.c).position);
-							vert.emplace_back(vertex(coo.b).position);
-							vert.emplace_back(vertex(coo.d).position);
-				
-						}
-					}
+					loadChunk(Index(i - 1, x, 0));
 				}
+				loadChunk(Index(i - 1, i + 1, 0));
 			}
-
-			if (vert.empty()) {
-				vert.emplace_back(glm::vec3(10, 0, 0));
-				vert.emplace_back(glm::vec3(0, 0, 10));
-				vert.emplace_back(glm::vec3(-10, 0, 0));
-				vert.emplace_back(glm::vec3(0, 0, 10));
-				vert.emplace_back(glm::vec3(-10, 0, 0));
-				vert.emplace_back(glm::vec3(-10, 0, -10));
-			}
-		
-			MeshConfigInfo info;
-			info.indexedVertices = false;
-			return std::make_shared<ns::Mesh>(vert, ind, Material(glm::vec3(0), .1f, 1, glm::vec3(1, 0, 0)), info);
 		}
 
-		float radius() const;
+		void clear() {
+			for (size_t i = 0; i < loadedChunks_.size(); i++)
+			{
+				if (unloadChunk(loadedChunks_[i]->index)) return;
+			}
+		}
+
+		virtual void draw(const ns::Shader& shader) const override;
 		
+
+		static std::array<std::vector<glm::ivec2>, ns::maximunRenderDistance> getOrder();
+		static std::array<std::vector<glm::ivec2>, ns::maximunRenderDistance> loadingOrder;
+
+		friend class SphereChunk;
 	protected:
-		//define a vertex on the spheric grid
-		struct Vertex {
-			glm::vec3 position;
-		};
 
 		//define the value that allow to access memory
 		struct Index {
 			Index(uint8_t face = NULL_FACE_INDEX, uint16_t i = 0, uint16_t j = 0) : face(face), i(i), j(j){}
+
 			uint8_t face;	//index between 0 and 5, it is the face of the cube
 			uint16_t i;		//x on the square face
 			uint16_t j;		//y on the square face
+
 			bool isNull() const { return (face == NULL_FACE_INDEX); }
 			static const Index null;
+
+			void add(glm::ivec2 offset, uint32_t resolution);
 		};
 
 		//define some chunk coordinates (a square with four vertices but vertices are not copied, they are indexed)
@@ -127,6 +118,7 @@ namespace ns::Sphere {
 			std::shared_ptr<SphereChunk> mesh;//mesh of the chunk
 			ChunkCoords coords{};//position of the chunk
 			ChunkLimits limit{};//limits of the chunk
+			Index index;	//allow to find chunk in the memory 
 		};
 
 	protected:
@@ -136,9 +128,11 @@ namespace ns::Sphere {
 		const float radius_;
 
 		//data
-		std::array<ns::BiArray<Chunk>, NUMBER_OF_FACES_IN_A_CUBE> terrain_;
-		std::array<ns::BiArray<Vertex>, NUMBER_OF_FACES_IN_A_CUBE> vertices_;
+		std::array<ns::BiArray<Chunk>, NUMBER_OF_FACES_IN_A_CUBE> terrain_; //terrain
+		std::array<ns::BiArray<glm::vec3>, NUMBER_OF_FACES_IN_A_CUBE> vertices_;//spheric grid vertices 
 		std::array<ChunksRegion, NUMBER_OF_FACES_IN_A_CUBE> subRegions;	//sub regions of the chunk that allow to quickly search for a chunk
+		std::vector<Chunk*> loadedChunks_;		//pointers of the chunks that are loaded
+		Index centralChunk_;
 		
 		//multi-threading
 		std::thread sphereThread_;
@@ -151,18 +145,22 @@ namespace ns::Sphere {
 
 		const ChunksRegion& findRegion(const ChunksRegion& region, const glm::vec3& pos) const;//recursive function that find the smallest sub region that contain the chunk
 
-		const Vertex& vertex(const Index& index) const;//get a vertex of the spheric grid
-		Vertex& vertex(const Index& index);	//get a vertex of the spheric grid
+		const glm::vec3& vertex(const Index& index) const;//get a vertex of the spheric grid
+		glm::vec3& vertex(const Index& index);	//get a vertex of the spheric grid
 
 		const Chunk& chunk(const Index& index) const;//get a chunk of the terrain
 		Chunk& chunk(const Index& index);//get a chunk of the terrain
 		
 		Index find(const glm::vec3& normalizedVector) const;//find a chunk index with the normalized position relative to the sphere
-		Index find(const Index& previousIndex) const;//find a chunk index by searching around the previous chunk
+		Index find(const Index& previousIndex, const glm::vec3& normalizedVector) const;//find a chunk index by searching around the previous chunk
+
+		bool isLoaded(const Index& chunk) const;//allow to know if a chunk is loaded 
+		bool loadChunk(const Index& chunk);
+		bool unloadChunk(const Index& chunk);
 
 		static void genSphereVertices(SphereContainer* object);//create the grid in the object (multi-threadable function)
 
-		static void logRegion(const ChunksRegion& region){ 
+		static void logRegion(const ChunksRegion& region){
 			dout << "\nstart :\nfirst = " << to_string((glm::ivec2)region.firstChunkIndex) <<
 				"\nlast = " << to_string((glm::ivec2)region.lastChunkIndex) << "\n-------->\n\n";
 

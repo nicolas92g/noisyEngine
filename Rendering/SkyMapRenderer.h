@@ -3,6 +3,7 @@
 #include "Camera.h"
 
 namespace ns {
+	template<typename P = DEFAULT_PTYPE, typename D = DEFAULT_DTYPE>
 	/**
 	 * @brief allow to easily render a cubemap as a sky map
 	 */
@@ -15,7 +16,7 @@ namespace ns {
 		 * \param cam
 		 * \param cubeMapTexture
 		 */
-		SkyMapRenderer(Camera& cam, unsigned cubeMapTexture);
+		SkyMapRenderer(Camera<P, D>& cam, unsigned cubeMapTexture);
 		/**
 		 * @brief this do not destroy the cubemap texture
 		 */
@@ -32,7 +33,7 @@ namespace ns {
 
 	protected:
 		Shader shader_;
-		Camera& cam_;
+		Camera<P, D>& cam_;
 
 		unsigned cubeMapTexture_;
 		unsigned VAO;

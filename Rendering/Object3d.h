@@ -9,28 +9,36 @@
 
 #include <configNoisy.hpp>
 
+#define DEFAULT_PTYPE float
+#define DEFAULT_DTYPE float
+
 namespace ns {
+	
+	//P is a high precision type, P stand for position
+	template<typename P = DEFAULT_PTYPE, typename D = DEFAULT_DTYPE>
 	/**
 	 * @brief allow to describe a basic Object in 3 dimensions with a position and a parent or not
 	 */
 	class Object3d
 	{
 	public:
+		//type used to store high precision values like position 
+		using vec3p = glm::vec<3, P>;
 		/**
 		 * @brief create it
 		 * \param position
 		 */
-		Object3d(const glm::vec3& position);
+		Object3d(const vec3p& position);
 		/**
 		 * @brief get the position in the world if it don't have any parent else return the position relative to the parent
 		 * \return 
 		 */
-		virtual glm::vec3 position() const;
+		virtual const vec3p& position() const;
 		/**
 		 * @brief get the position in the world even if it has a parent
 		 * \return 
 		 */
-		virtual glm::vec3 WorldPosition() const;
+		virtual vec3p WorldPosition() const;
 		/**
 		 * @brief return the name of the object
 		 * \return 
@@ -40,7 +48,7 @@ namespace ns {
 		 * @brief change the position of the object without any verification
 		 * \param position
 		 */
-		virtual void setPosition(const glm::vec3& position);
+		virtual void setPosition(const vec3p& position);
 		/**
 		 * @brief change the name of the object
 		 * \param name
@@ -73,8 +81,8 @@ namespace ns {
 		virtual YAML::Node inputFromYAML(const std::string& filepath);
 
 	protected:
-		glm::vec3 position_;
-		std::optional<Object3d*> parent_;
+		vec3p position_;
+		std::optional<Object3d<P, D>*> parent_;
 		std::string name_;
 
 		virtual bool isGeometricObject3d();
@@ -82,43 +90,54 @@ namespace ns {
 
 		friend class Debug;
 		static unsigned entityCount;
-		static std::unordered_map<std::string, Object3d*> objects;
+		static std::unordered_map<std::string, Object3d<P, D>*> objects;
 	};
+
+	//P is a high precision type but D can be lower due to lower needs (D stand for direction)
+	template<typename P = DEFAULT_PTYPE, typename D = DEFAULT_DTYPE>
 	/**
 	 * @brief is an Object3d but with a direction 
 	 */
-	class DirectionalObject3d : public Object3d
+	class DirectionalObject3d : public Object3d<P, D>
 	{
 	public:
+		using vec3d = glm::vec<3, D>;
+		using vec3p = glm::vec<3, P>;
 		/**
 		 * @brief create the object
 		 * \param position
 		 * \param direction
 		 */
-		DirectionalObject3d(const glm::vec3& position, const glm::vec3& direction);
+		DirectionalObject3d(const vec3p& position, const vec3d& direction);
 		/**
 		 * @brief normalize the new direction
 		 * \param direction
 		 */
-		void setDirection(const glm::vec3& direction);
+		void setDirection(const vec3d& direction);
 		/**
 		 * @brief return the direction
 		 * \return 
 		 */
-		glm::vec3 direction() const;
+		const vec3d& direction() const;
 
 	protected:
-		glm::vec3 direction_;
+		vec3d direction_;
 
 		//give the private access to the Debug class 
 		friend class Debug;
 	};
+
+	//P is a high precision type but D can be lower due to lower needs (D stand for direction)
+	template<typename P = DEFAULT_PTYPE, typename D = DEFAULT_DTYPE>
 	/**
 	 * @brief this is an Object3d but with a scale and a rotation and is able to generate some matrices with those values
 	 */
-	class GeometricObject3d : public Object3d
+	class GeometricObject3d : public Object3d<P, D>
 	{
 	public:
+		using vec3p = glm::vec<3, P>;
+		using mat4p = glm::mat<4, 4, P>;
+		using vec3d = glm::vec<3, D>;
 		/**
 		 * @brief create the object
 		 * \param position
@@ -126,7 +145,7 @@ namespace ns {
 		 * \param axis
 		 * \param angle
 		 */
-		GeometricObject3d(const glm::vec3& position, const glm::vec3& scale, const glm::vec3& axis, float angle);
+		GeometricObject3d(const vec3p& position, const vec3p& scale, const vec3d& axis, D angle);
 		/**
 		 * @brief regenerate the matrices
 		 */
@@ -135,62 +154,62 @@ namespace ns {
 		 * @brief change the scale of the object without any verification
 		 * \param newScale
 		 */
-		void setScale(const glm::vec3& newScale);
+		void setScale(const vec3p& newScale);
 		/**
 		 * @brief change the rotation values, the axis is normalized
 		 * \param axis
 		 * \param angleInRadians
 		 */
-		void setRotation(const glm::vec3& axis, float angleInRadians);
+		void setRotation(const vec3d& axis, D angleInRadians);
 		/**
 		 * @brief return the scale
 		 * \return 
 		 */
-		glm::vec3 scale() const;
+		const vec3p& scale() const;
 		/**
 		 * @brief return the rotation axis
 		 * \return 
 		 */
-		glm::vec3 rotationAxis() const;
+		const vec3d& rotationAxis() const;
 		/**
 		 * @brief return the rotation angle
 		 * \return 
 		 */
-		float rotationAngle() const;
+		D rotationAngle() const;
 		/**
 		 * @brief just return the previous reult matrix that has been calculated by the last update() call
 		 * \return 
 		 */
-		const glm::mat4& modelMatrix() const;
+		const mat4p& modelMatrix() const;
 
 #		if NS_GEOMETRIC_OBJECT3D_STORE_ALL_MATRICES
 		/**
 		 * @brief just return the previous translation matrix that has been calculated by the last update() call
 		 * \return
 		 */
-		const glm::mat4& translationMatrix() const;
+		const mat4p& translationMatrix() const;
 		/**
 		 * @brief just return the previous scaling matrix that has been calculated by the last update() call
 		 * \return
 		 */
-		const glm::mat4& scaleMatrix() const;
+		const mat4p& scaleMatrix() const;
 		/**
 		 * @brief just return the previous rotation matrix that has been calculated by the last update() call
 		 * \return
 		 */
-		const glm::mat4& rotationMatrix() const;
+		const mat4p& rotationMatrix() const;
 #		endif
 
 	protected:
-		glm::vec3 scale_;
-		glm::vec3 axis_;
-		float angle_;
+		vec3p scale_;
+		vec3d axis_;
+		D angle_;
 
-		glm::mat4 modelMatrix_;
+		mat4p modelMatrix_;
 #		if NS_GEOMETRIC_OBJECT3D_STORE_ALL_MATRICES
-		glm::mat4 scaleMatrix_;
-		glm::mat4 rotationMatrix_;
-		glm::mat4 translationMatrix_;
+		mat4p scaleMatrix_;
+		mat4p rotationMatrix_;
+		mat4p translationMatrix_;
 #		endif
 		//give the private access to the debug class
 		friend class Debug;

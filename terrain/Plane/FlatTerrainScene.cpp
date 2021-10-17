@@ -59,7 +59,7 @@ void ns::Plane::FlatTerrainScene::update(const GridPositionType& centerPosition)
 		info.indexedVertices = data.meshData.indexed;
 
 		chunk.mesh = std::make_shared<ns::Mesh>(data.meshData.vertices, data.meshData.indices, Material::getDefault(), info);
-		chunk.object = std::make_shared<ns::DrawableObject3d>(*chunk.mesh);
+		chunk.object = std::make_shared<ns::DrawableObject3d<>>(*chunk.mesh);
 
 		scene_.addStatic(*chunk.object);
 		chunk.wasProcessed = true;
@@ -68,7 +68,7 @@ void ns::Plane::FlatTerrainScene::update(const GridPositionType& centerPosition)
 	chunksData_.clear();
 }
 
-ns::Scene& ns::Plane::FlatTerrainScene::lockScene()
+ns::Scene<>& ns::Plane::FlatTerrainScene::lockScene()
 {
 	sceneMutex_.lock();
 	return scene_;

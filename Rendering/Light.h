@@ -81,7 +81,7 @@ namespace ns {
 	/**
 	 * @brief a light without attenuation that is only described by a direction and a color
 	 */
-	class DirectionalLight : public LightBase_, public DirectionalObject3d
+	class DirectionalLight : public LightBase_, public DirectionalObject3d<>
 	{
 	public:
 		/**
@@ -118,14 +118,14 @@ namespace ns {
 		static uint32_t number_;
 
 		//remove the direction property
-		using DirectionalObject3d::position_;
-		using DirectionalObject3d::position;
-		using DirectionalObject3d::setPosition;
+		using DirectionalObject3d<>::position_;
+		using DirectionalObject3d<>::position;
+		using DirectionalObject3d<>::setPosition;
 	};
 	/**
 	 * @brief a point light is a light with a position, a attenuation factor and a color
 	 */
-	class PointLight : public attenuatedLightBase_, public Object3d
+	class PointLight : public attenuatedLightBase_, public Object3d<>
 	{
 	public:
 		/**
@@ -160,7 +160,7 @@ namespace ns {
 	 * the outer angle is where the transition end.
 	 * https://learnopengl.com/Lighting/Light-casters
 	 */
-	class SpotLight : public attenuatedLightBase_, public DirectionalObject3d
+	class SpotLight : public attenuatedLightBase_, public DirectionalObject3d<>
 	{
 	public:
 		/**
@@ -201,7 +201,7 @@ namespace ns {
 		float outerCutOff_;
 
 	private:
-		using Object3d::position_;
+		using Object3d<>::position_;
 		static uint32_t number_;
 	};
 
