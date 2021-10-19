@@ -51,13 +51,12 @@ void ns::Debug::render()
 	fpsMenu();
 	Separator();
 
-	windowMenu();
-	rendererMenu();
+	if (win_) windowMenu();
+	if (renderer_) rendererMenu();
 	ShellMenu();
 	heapMenu();
-	cameraMenu();
+	if(cam_) cameraMenu();
 	scenesMenu();
-	meshDecompositionMenu();
 	End();
 
 	//open the shell
