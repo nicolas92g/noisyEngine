@@ -85,19 +85,33 @@ void ns::Sphere::SphereContainer::update(const glm::vec3& direction)
 	const Index centralChunk = find(direction);
 	if (!centralChunk.isNull())
 		centralChunk_ = centralChunk;
+
+	bool loaded = false;
+
+	size_t renderd = 10;
 	
-	for (size_t d = 0; d < loadingOrder.size(); d++)
+	for (size_t d = 0; d < renderd and !loaded; d++)
 	{
 		for (size_t i = 0; i < loadingOrder[d].size(); i++)
 		{
 			Index index = centralChunk_;
-			index.add(loadingOrder[d][i], resolution_);
+			index.add(loadingOrder[d][i], resolution_, 0);
 
-			if (loadChunk(index)) return;
+			if (loadChunk(index)) { loaded = true; break; }
 		}
 	}
 
-
+	if(!(rand() % 20))
+		for (size_t d = renderd; d < renderd * 4; d++)
+		{
+			for (size_t i = 0; i < loadingOrder[d].size(); i++)
+			{
+				Index index = centralChunk_;
+				index.add(loadingOrder[d][i], resolution_, 0);
+		
+				 (unloadChunk(index));
+			}
+		}
 }
 
 void ns::Sphere::SphereContainer::draw(const ns::Shader& shader) const
@@ -470,9 +484,10 @@ std::array<std::vector<glm::ivec2>, ns::maximunRenderDistance> ns::Sphere::Spher
 	return ret;
 }
 
-void ns::Sphere::SphereContainer::Index::add(glm::ivec2 offset, uint32_t resolution)
+void ns::Sphere::SphereContainer::Index::add(glm::ivec2 offset, uint32_t resolution, uint8_t itCount)
 {
 	using namespace glm;
+#	define INVERSE(v) v = resolution - 1 - v
 
 	ivec2 pos = ivec2(i, j) + offset;
 
@@ -481,63 +496,151 @@ void ns::Sphere::SphereContainer::Index::add(glm::ivec2 offset, uint32_t resolut
 	bool bottom = pos.y < 0;
 	bool top = pos.y >= resolution;
 
+	//check that the coord is valid
 	if (!(left or right or bottom or top)) {
 		i = pos.x;
 		j = pos.y;
 		return;
 	}
 
+	//limit recursivity
+	if (itCount > 0) return;
+	itCount++;
+
+	//move the position on an other face
 	switch (face) {
 		case 0:
 			if (left) {
 				face = 3;
-				add(offset + glm::ivec2(resolution, 0), resolution);
+				add(offset + glm::ivec2(resolution, 0), resolution, itCount);
 			}
 			else if (right) {
 				face = 1;
-				add(offset - glm::ivec2(resolution, 0), resolution);
+				add(offset - glm::ivec2(resolution, 0), resolution, itCount);
 			}
 			if (bottom) {
 				face = 5;
-				add(offset + glm::ivec2(0, resolution), resolution);
+				add(offset + glm::ivec2(0, resolution), resolution, itCount);
 			}
 			else if (top) {
 				face = 4;
-				add(offset - glm::ivec2(0, resolution), resolution);
+				add(offset - glm::ivec2(0, resolution), resolution, itCount);
 			}
 
 			break;
 		case 1:
 			if (left) {
 				face = 0;
-				add(offset + glm::ivec2(resolution, 0), resolution);
+				add(offset + glm::ivec2(resolution, 0), resolution, itCount);
 			}
 			else if (right) {
 				face = 2;
-				add(offset - glm::ivec2(resolution, 0), resolution);
+				add(offset - glm::ivec2(resolution, 0), resolution, itCount);
 			}
 			if (bottom) {
 				face = 5;
+				add(offset + glm::ivec2(0, resolution), resolution, itCount);
 				std::swap(i, j);
-				add(offset + glm::ivec2(resolution, 0), resolution);
+				INVERSE(j);
 			}
 			else if (top) {
 				face = 4;
+				add(offset - glm::ivec2(0, resolution), resolution, itCount);
 				std::swap(i, j);
-				add(offset - glm::ivec2(resolution, 0), resolution);
+				INVERSE(i);
 			}
 			break;
 		case 2:
-
+			if (left) {
+				face = 1;
+				add(offset + glm::ivec2(resolution, 0), resolution, itCount);
+			}
+			else if (right) {
+				face = 3;
+				add(offset - glm::ivec2(resolution, 0), resolution, itCount);
+			}
+			if (bottom) {
+				face = 5;
+				add(offset + glm::ivec2(0, resolution), resolution, itCount);
+				INVERSE(j);
+				INVERSE(i);
+			}
+			else if (top) {
+				face = 4;
+				add(offset - glm::ivec2(0, resolution), resolution, itCount);
+				INVERSE(i);
+				INVERSE(j);
+			}
 			break;
 		case 3:
-
+			if (left) {
+				face = 2;
+				add(offset + glm::ivec2(resolution, 0), resolution, itCount);
+			}
+			else if (right) {
+				face = 0;
+				add(offset - glm::ivec2(resolution, 0), resolution, itCount);
+			}
+			if (bottom) {
+				face = 5;
+				add(offset + glm::ivec2(0, resolution), resolution, itCount);
+				std::swap(i, j);
+				INVERSE(i);
+			}
+			else if (top) {
+				face = 4;
+				add(offset - glm::ivec2(0, resolution), resolution, itCount);
+				std::swap(i, j);
+				INVERSE(j);
+			}
 			break;
 		case 4:
-
+			if (left) {
+				face = 3;
+				add(offset + glm::ivec2(resolution, 0), resolution, itCount);
+				std::swap(i, j);
+				INVERSE(i);
+			}
+			else if (right) {
+				face = 1;
+				add(offset - glm::ivec2(resolution, 0), resolution, itCount);
+				std::swap(i, j);
+				INVERSE(j);
+			}
+			if (bottom) {
+				face = 0;
+				add(offset + glm::ivec2(0, resolution), resolution, itCount);
+			}
+			else if (top) {
+				face = 2;
+				add(offset - glm::ivec2(0, resolution), resolution, itCount);
+				INVERSE(j);
+				INVERSE(i);
+			}
 			break;
 		case 5:
-
+			if (left) {
+				face = 3;
+				add(offset + glm::ivec2(resolution, 0), resolution, itCount);
+				std::swap(i, j);
+				INVERSE(j);
+			}
+			else if (right) {
+				face = 1;
+				add(offset - glm::ivec2(resolution, 0), resolution, itCount);
+				std::swap(i, j);
+				INVERSE(i);
+			}
+			if (bottom) {
+				face = 2;
+				add(offset + glm::ivec2(0, resolution), resolution, itCount);
+				INVERSE(j);
+				INVERSE(i);
+			}
+			else if (top) {
+				face = 0;
+				add(offset - glm::ivec2(0, resolution), resolution, itCount);
+			}
 			break;
 		default:
 			break;

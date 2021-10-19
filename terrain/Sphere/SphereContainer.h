@@ -50,7 +50,7 @@ namespace ns::Sphere {
 			{
 				for (size_t x = 0; x < i; x++)
 				{
-					loadChunk(Index(i - 1, x, 0));
+					if (loadChunk(Index(i - 1, x, 0))) return;
 				}
 				loadChunk(Index(i - 1, i + 1, 0));
 			}
@@ -83,7 +83,7 @@ namespace ns::Sphere {
 			bool isNull() const { return (face == NULL_FACE_INDEX); }
 			static const Index null;
 
-			void add(glm::ivec2 offset, uint32_t resolution);
+			void add(glm::ivec2 offset, uint32_t resolution, uint8_t itCount = 0);
 		};
 
 		//define some chunk coordinates (a square with four vertices but vertices are not copied, they are indexed)

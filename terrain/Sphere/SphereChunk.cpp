@@ -57,7 +57,7 @@ ns::Sphere::SphereChunk::SphereChunk(const std::array<glm::vec3, 4>& chunkLocati
 		for (uint16_t j = 0; j < resolution_ + 1; j++)
 		{
 			auto& v = grid.value(i, j);
-			v *= sphereRadius_ + noise(v * 1.1f) * 20.f + noise(v * 10.f) * 5.f;
+			v *= sphereRadius_ + noise(v * 1.1f) * .02f * sphereRadius_ + noise(v * 10.f) * .01f * sphereRadius_;
 		}
 	}
 
